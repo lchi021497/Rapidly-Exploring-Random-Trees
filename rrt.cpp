@@ -3,7 +3,7 @@
 #include <random>
 #include <SFML/Graphics.hpp>
 #include "geometry.h"
-
+#include <ctime>
 using namespace std ; 
 
 const int WIDTH = 800 ;
@@ -68,8 +68,12 @@ void prepareInput() {
 	// Make starting and ending point circles ready 
 	startingPoint.setRadius(RADIUS); endingPoint.setRadius(RADIUS); 
     startingPoint.setFillColor(sf::Color(208, 0, 240)); endingPoint.setFillColor(sf::Color::Blue);
-    startingPoint.setPosition(start.x, start.y); endingPoint.setPosition(stop.x, stop.y);
-    startingPoint.setOrigin(RADIUS/2, RADIUS/2); endingPoint.setOrigin(RADIUS/2, RADIUS/2);
+    sf::Vector2f start_position(start.x, start.y);
+    sf::Vector2f end_position(stop.x, stop.y);
+    startingPoint.setPosition(start_position); endingPoint.setPosition(end_position);
+    sf::Vector2f origin1(RADIUS/2, RADIUS/2);
+    sf::Vector2f origin2(RADIUS/2, RADIUS/2);
+    startingPoint.setOrigin(origin1); endingPoint.setOrigin(origin2);
 
     // Prepare polygon of obstacles 
 	polygons.resize(obstacle_cnt);
@@ -102,7 +106,7 @@ void draw(sf::RenderWindow& window) {
 		Point par = nodes[parent[i]] ; 
 		line[0] = sf::Vertex(sf::Vector2f(par.x, par.y));
 		line[1] = sf::Vertex(sf::Vector2f(nodes[i].x, nodes[i].y));
-		window.draw(line, 2, sf::Lines);
+		window.draw(line, 2, sf::PrimitiveType::Lines);
 	}
 
 	window.draw(startingPoint); window.draw(endingPoint);
@@ -115,7 +119,7 @@ void draw(sf::RenderWindow& window) {
 			line[0] = sf::Vertex(sf::Vector2f(nodes[par].x, nodes[par].y));
 			line[1] = sf::Vertex(sf::Vector2f(nodes[node].x, nodes[node].y));
 			line[0].color = line[1].color = sf::Color::Red; // orange color 
-			window.draw(line, 2, sf::Lines);
+			window.draw(line, 2, sf::PrimitiveType::Lines);
 			node = par ;
 		}
 	}
@@ -241,8 +245,9 @@ void RRT() {
 }
 
 int main() {
-	getInput(); prepareInput(); 
-    sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "Basic Anytime RRT");
+	getInput(); prepareInput();
+  sf::Vector2u dimensions(WIDTH, HEIGHT);
+    sf::RenderWindow window(sf::VideoMode(dimensions, 1), "Basic Anytime RRT");
 
 	nodeCnt = 1; nodes.push_back(start); int iterations = 0 ; 
 	parent.push_back(0); cost.push_back(0);
