@@ -12,7 +12,7 @@ const int RADIUS = 5 ;
 const double GOAL_SAMPLING_PROB = 0.05;
 const double INF = 1e18;
 
-const double JUMP_SIZE = (WIDTH/100.0 * HEIGHT/100.0)/1.5;
+const double JUMP_SIZE = (WIDTH/100.0 * HEIGHT/100.0)/15;
 const double DISK_SIZE = JUMP_SIZE ; // Ball radius around which nearby points are found 
 
 int whichRRT = 3 ; 
@@ -148,13 +148,15 @@ Point pickRandomPoint() {
 	return Point(randomCoordinate(0, WIDTH), randomCoordinate(0, HEIGHT)); 
 }
 
-void checkDestinationReached() {
+bool checkDestinationReached() {
 	sf::Vector2f position = endingPoint.getPosition(); 
 	if(checkCollision(nodes[parent[nodeCnt - 1]], nodes.back(), Point(position.x, position.y), RADIUS)) {
 		pathFound = 1 ; 
 		goalIndex = nodeCnt - 1;
-		cout << "Reached!! With a distance of " << cost.back() << " units. " << endl << endl ; 
+		cout << "Reached!! With a distance of " << cost.back() << " units. " << endl << endl ;
+		return true;
 	}
+	return false;
 }
 
 /* Inserts nodes on the path from rootIndex till Point q such 
@@ -191,7 +193,7 @@ void rewire() {
 
 /*	Runs one iteration of RRT depending on user choice 
 	At least one new node is added on the screen each iteration. */
-void RRT() {
+bool RRT() {
 	Point newPoint, nearestPoint, nextPoint ; bool updated = false ; int cnt = 0 ; 
 	int nearestIndex = 0 ; double minCost = INF; nearby.clear(); jumps.resize(nodeCnt); 
 
@@ -220,7 +222,11 @@ void RRT() {
 			nodes.push_back(nextPoint); nodeCnt++;
 			parent.push_back(nearestIndex);
 			cost.push_back(cost[nearestIndex] + distance(nearestPoint, nextPoint));
-			if(!pathFound) checkDestinationReached();
+			if(!pathFound) {
+				if (checkDestinationReached()) {
+					return true;
+				}
+			}
 			continue ; 
 		}
 
@@ -239,9 +245,14 @@ void RRT() {
 		parent.push_back(par); cost.push_back(minCost);
 		nodes.push_back(nextPoint); nodeCnt++; 
 		updated = true ; 
-		if(!pathFound) checkDestinationReached(); 
+		if(!pathFound) {
+			if (checkDestinationReached()) {
+				return true;
+			}
+		}
 		rewire();
 	}
+	return false;
 }
 
 int main() {
@@ -265,7 +276,11 @@ int main() {
             	return 0; exit(0);
             }
         }
-        RRT(); iterations++;
+        auto done = RRT(); 
+		if (done) {
+			return 0;
+		}
+		iterations++;
         
 		if(iterations % 500 == 0) {
 			cout << "Iterations: " << iterations << endl ; 
