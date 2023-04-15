@@ -51,7 +51,7 @@ void getInput() {
 	
 	for(int i = 0; i < obstacle_cnt; i++) {
 		poly.clear();
-		cout << "How many points in " << i+1 << "th polygon?" << endl ; 
+		cout << "How many points inf " << i+1 << "th polygon?" << endl ;
 		cin >> pnts ; 
 		poly.resize(pnts);
 
@@ -191,6 +191,25 @@ void rewire() {
 	}
 }
 
+std::pair<Point, int> findNearestIdx(Point &newPoint) {
+	Point nearestPoint = *nodes.begin();
+	auto nearestIndex = 0;
+
+	for(int i = 0; i < nodeCnt; i++) {
+		if(pathFound and randomCoordinate(0.0, 1.0) < 0.25) // Recalculate cost once in a while 
+			cost[i] = cost[parent[i]] + distance(nodes[parent[i]], nodes[i]);  
+
+		// Make smaller jumps sometimes to facilitate passing through narrow passages 
+		jumps[i] = randomCoordinate(0.3, 1.0) * JUMP_SIZE ;
+		// jumps[i] = JUMP_SIZE;
+		auto pnt = nodes[i] ; 
+		if((pnt.distance(newPoint) - nearestPoint.distance(newPoint)) <= EPS and isEdgeObstacleFree(pnt, pnt.steer(newPoint, jumps[i])))
+			nearestPoint = pnt, nearestIndex = i ; 
+	}
+
+	return std::make_pair(nearestPoint, nearestIndex);
+}
+
 /*	Runs one iteration of RRT depending on user choice 
 	At least one new node is added on the screen each iteration. */
 bool RRT() {
@@ -201,18 +220,9 @@ bool RRT() {
 		newPoint = pickRandomPoint(); 
 
 		// Find nearest point to the newPoint such that the next node 
-		// be added in graph in the (nearestPoint, newPoint) while being obstacle free
-		nearestPoint = *nodes.begin(); nearestIndex = 0;
-		for(int i = 0; i < nodeCnt; i++) {
-			if(pathFound and randomCoordinate(0.0, 1.0) < 0.25) // Recalculate cost once in a while 
-				cost[i] = cost[parent[i]] + distance(nodes[parent[i]], nodes[i]);  
-
-			// Make smaller jumps sometimes to facilitate passing through narrow passages 
-			jumps[i] = randomCoordinate(0.3, 1.0) * JUMP_SIZE ; 
-			auto pnt = nodes[i] ; 
-			if((pnt.distance(newPoint) - nearestPoint.distance(newPoint)) <= EPS and isEdgeObstacleFree(pnt, pnt.steer(newPoint, jumps[i])))
-				nearestPoint = pnt, nearestIndex = i ; 
-		}
+		auto nearest = findNearestIdx(newPoint);
+		nearestPoint = nearest.first;
+		nearestIndex = nearest.second;
 		nextPoint = stepNear(nearestPoint, newPoint, jumps[nearestIndex]);
 		if(!isEdgeObstacleFree(nearestPoint, nextPoint)) continue ; 
 
@@ -256,27 +266,36 @@ bool RRT() {
 }
 
 int main() {
-	getInput(); prepareInput();
+	
+	whichRRT = 1; 
+	start.x = 0;
+	start.y = 0;
+	stop.x = 500;
+	stop.y = 500;
+	obstacle_cnt = 0; 
+	// getInput(); 
+	prepareInput();
   sf::Vector2u dimensions(WIDTH, HEIGHT);
-    sf::RenderWindow window(sf::VideoMode(dimensions, 1), "Basic Anytime RRT");
+    // sf::RenderWindow window(sf::VideoMode(dimensions, 1), "Basic Anytime RRT");
 
 	nodeCnt = 1; nodes.push_back(start); int iterations = 0 ; 
 	parent.push_back(0); cost.push_back(0);
     sf::Time delayTime = sf::milliseconds(5);
 
     cout << endl << "Starting node is in Pink and Destination node is in Blue" << endl << endl ; 
-    while (window.isOpen())
-    {
-        sf::Event event;
-        while (window.pollEvent(event))
-        {
-            if (event.type == sf::Event::Closed)
-            {
-            	window.close();
-            	return 0; exit(0);
-            }
-        }
-        auto done = RRT(); 
+    // while (window.isOpen())
+    // {
+    //     sf::Event event;
+    //     while (window.pollEvent(event))
+    //     {
+    //         if (event.type == sf::Event::Closed)
+    //         {
+    //         	window.close();
+    //         	return 0; exit(0);
+    //         }
+    //     }
+	while (true) {
+		auto done = RRT(); 
 		if (done) {
 			return 0;
 		}
@@ -288,12 +307,14 @@ int main() {
 			else cout << "Shortest distance till now: " << cost[goalIndex] << " units." << endl ;
 			cout << endl ;
 		}
+	}
+        
 
-		//sf::sleep(delayTime);
-		window.clear();
-		draw(window); 
-        window.display();
-    }
+	// 	//sf::sleep(delayTime);
+	// 	window.clear();
+	// 	draw(window); 
+    //     window.display();
+    // }
 }
 
 /* SOME SAMPLE INPUTS ARE SHOWN BELOW (only cin part) without any RRT preference */ 
