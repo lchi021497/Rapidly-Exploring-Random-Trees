@@ -276,25 +276,24 @@ int main() {
 	// getInput(); 
 	prepareInput();
   sf::Vector2u dimensions(WIDTH, HEIGHT);
-    // sf::RenderWindow window(sf::VideoMode(dimensions, 1), "Basic Anytime RRT");
+    sf::RenderWindow window(sf::VideoMode(dimensions, 1), "Basic Anytime RRT");
 
 	nodeCnt = 1; nodes.push_back(start); int iterations = 0 ; 
 	parent.push_back(0); cost.push_back(0);
     sf::Time delayTime = sf::milliseconds(5);
 
     cout << endl << "Starting node is in Pink and Destination node is in Blue" << endl << endl ; 
-    // while (window.isOpen())
-    // {
-    //     sf::Event event;
-    //     while (window.pollEvent(event))
-    //     {
-    //         if (event.type == sf::Event::Closed)
-    //         {
-    //         	window.close();
-    //         	return 0; exit(0);
-    //         }
-    //     }
-	while (true) {
+    while (window.isOpen())
+    {
+        sf::Event event;
+        while (window.pollEvent(event))
+        {
+            if (event.type == sf::Event::Closed)
+            {
+            	window.close();
+            	return 0; exit(0);
+            }
+        }
 		auto done = RRT(); 
 		if (done) {
 			return 0;
@@ -307,14 +306,12 @@ int main() {
 			else cout << "Shortest distance till now: " << cost[goalIndex] << " units." << endl ;
 			cout << endl ;
 		}
-	}
-        
 
-	// 	//sf::sleep(delayTime);
-	// 	window.clear();
-	// 	draw(window); 
-    //     window.display();
-    // }
+		//sf::sleep(delayTime);
+		window.clear();
+		draw(window); 
+        window.display();
+    }
 }
 
 /* SOME SAMPLE INPUTS ARE SHOWN BELOW (only cin part) without any RRT preference */ 
