@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <limits>
 #include <stdexcept>
+#include <cassert>
 
 namespace Kdtree {
 
@@ -155,6 +156,7 @@ KdTree::KdTree(CoordPoint min_point, CoordPoint max_point, size_t dimension, int
   distance = NULL;
   this->distance_type = -1;
   set_distance(distance_type);
+  root = NULL;
 }
 
 KdTree::KdTree(const CoordPointVec nodes, CoordPoint min_point, CoordPoint max_point, size_t dimension, int distance_type /*=2*/) : KdTree(min_point, max_point, dimension, distance_type) {
@@ -214,7 +216,7 @@ kdtree_node* KdTree::build_tree(size_t depth, size_t a, size_t b) {
   return node;
 }
 
-kdtree_node* KdTree::insert(const CoordPoint& point) {
+kdtree_node* KdTree::insert(const CoordPoint& point, int index) {
   size_t m;
   double temp, cutval;
   kdtree_node *ptr = root;
@@ -223,6 +225,7 @@ kdtree_node* KdTree::insert(const CoordPoint& point) {
   node->lobound = lobound_;
   node->upbound = upbound_;
   node->point = point;
+  node->index = index;
 
   if (root == nullptr) {
     root = node;
@@ -245,7 +248,7 @@ kdtree_node* KdTree::insert(const CoordPoint& point) {
         break;
       }
       ptr = ptr->loson;
-      printf("left\n");
+      // printf("left\n");
     } else {
       node->lobound[node->cutdim] = cutval;
       if (ptr->hison == nullptr) {
@@ -253,7 +256,7 @@ kdtree_node* KdTree::insert(const CoordPoint& point) {
         break;
       }
       ptr = ptr->hison;
-      printf("right\n");
+      // printf("right\n");
     }
 
     depth++;
@@ -334,8 +337,8 @@ void KdTree::range_nearest_neighbors(const CoordPoint& point, double r,
 bool KdTree::neighbor_search(const CoordPoint& point, kdtree_node* node,
                              size_t k, SearchQueue* neighborheap, int depth) {
   double curdist, dist;
-  printf("depth: %d\n", depth);
-  printf("node: %f, %f\n", node->point[0], node->point[1]);
+  // printf("depth: %d\n", depth);
+  // printf("node: %f, %f\n", node->point[0], node->point[1]);
 
   curdist = distance->distance(point, node->point);
   if (!(searchpredicate && !(*searchpredicate)(node))) {

@@ -3,7 +3,12 @@
 #include <random>
 #include <SFML/Graphics.hpp>
 #include "geometry.h"
-#include <ctime>
+#include <stdlib.h>
+#include <time.h>
+#include <omp.h>
+#include <chrono> 
+#include "kdtree.hpp"
+
 using namespace std ; 
 
 const int WIDTH = 800 ;
@@ -21,9 +26,11 @@ vector < Polygon > obstacles ;
 Point start, stop ; 
 int obstacle_cnt = 1 ;
 
+
+
 vector < Point > nodes ; 
-vector < int > parent, nearby ; 
-vector < double > cost, jumps ; 
+vector < int > parent; 
+vector < double > cost ; 
 int nodeCnt = 0, goalIndex = -1 ; 
 
 vector <sf::ConvexShape> polygons ;
@@ -51,7 +58,7 @@ void getInput() {
 	
 	for(int i = 0; i < obstacle_cnt; i++) {
 		poly.clear();
-		cout << "How many points inf " << i+1 << "th polygon?" << endl ;
+		cout << "How many points in " << i+1 << "th polygon?" << endl ; 
 		cin >> pnts ; 
 		poly.resize(pnts);
 
@@ -68,12 +75,8 @@ void prepareInput() {
 	// Make starting and ending point circles ready 
 	startingPoint.setRadius(RADIUS); endingPoint.setRadius(RADIUS); 
     startingPoint.setFillColor(sf::Color(208, 0, 240)); endingPoint.setFillColor(sf::Color::Blue);
-    sf::Vector2f start_position(start.x, start.y);
-    sf::Vector2f end_position(stop.x, stop.y);
-    startingPoint.setPosition(start_position); endingPoint.setPosition(end_position);
-    sf::Vector2f origin1(RADIUS/2, RADIUS/2);
-    sf::Vector2f origin2(RADIUS/2, RADIUS/2);
-    startingPoint.setOrigin(origin1); endingPoint.setOrigin(origin2);
+    startingPoint.setPosition(start.x, start.y); endingPoint.setPosition(stop.x, stop.y);
+    startingPoint.setOrigin(RADIUS/2, RADIUS/2); endingPoint.setOrigin(RADIUS/2, RADIUS/2);
 
     // Prepare polygon of obstacles 
 	polygons.resize(obstacle_cnt);
@@ -106,7 +109,7 @@ void draw(sf::RenderWindow& window) {
 		Point par = nodes[parent[i]] ; 
 		line[0] = sf::Vertex(sf::Vector2f(par.x, par.y));
 		line[1] = sf::Vertex(sf::Vector2f(nodes[i].x, nodes[i].y));
-		window.draw(line, 2, sf::PrimitiveType::Lines);
+		window.draw(line, 2, sf::Lines);
 	}
 
 	window.draw(startingPoint); window.draw(endingPoint);
@@ -119,7 +122,7 @@ void draw(sf::RenderWindow& window) {
 			line[0] = sf::Vertex(sf::Vector2f(nodes[par].x, nodes[par].y));
 			line[1] = sf::Vertex(sf::Vector2f(nodes[node].x, nodes[node].y));
 			line[0].color = line[1].color = sf::Color::Red; // orange color 
-			window.draw(line, 2, sf::PrimitiveType::Lines);
+			window.draw(line, 2, sf::Lines);
 			node = par ;
 		}
 	}
@@ -128,6 +131,7 @@ void draw(sf::RenderWindow& window) {
 template <typename T> // Returns a random number in [low, high] 
 T randomCoordinate(T low, T high){
     random_device random_device;
+    //default_random_engine engine;
     mt19937 engine{random_device()};
     uniform_real_distribution<double> dist(low, high);
     return dist(engine);
@@ -148,15 +152,13 @@ Point pickRandomPoint() {
 	return Point(randomCoordinate(0, WIDTH), randomCoordinate(0, HEIGHT)); 
 }
 
-bool checkDestinationReached() {
+void checkDestinationReached() {
 	sf::Vector2f position = endingPoint.getPosition(); 
 	if(checkCollision(nodes[parent[nodeCnt - 1]], nodes.back(), Point(position.x, position.y), RADIUS)) {
 		pathFound = 1 ; 
 		goalIndex = nodeCnt - 1;
-		cout << "Reached!! With a distance of " << cost.back() << " units. " << endl << endl ;
-		return true;
+		cout << "Reached!! With a distance of " << cost.back() << " units. " << endl << endl ; 
 	}
-	return false;
 }
 
 /* Inserts nodes on the path from rootIndex till Point q such 
@@ -177,7 +179,7 @@ void insertNodesInPath(int rootIndex, Point& q) {
 
 /*  Rewires the parents of the tree greedily starting from 
 	the new node found in this iterationsation as the parent */
-void rewire() {
+void rewire(std::vector<int> nearby) {
 	int lastInserted = nodeCnt - 1 ; 
 	for(auto nodeIndex: nearby) {
 		int par = lastInserted, cur = nodeIndex;
@@ -191,57 +193,119 @@ void rewire() {
 	}
 }
 
-std::pair<Point, int> findNearestIdx(Point &newPoint) {
-	Point nearestPoint = *nodes.begin();
-	auto nearestIndex = 0;
-
-	for(int i = 0; i < nodeCnt; i++) {
-		if(pathFound and randomCoordinate(0.0, 1.0) < 0.25) // Recalculate cost once in a while 
-			cost[i] = cost[parent[i]] + distance(nodes[parent[i]], nodes[i]);  
-
-		// Make smaller jumps sometimes to facilitate passing through narrow passages 
-		jumps[i] = randomCoordinate(0.3, 1.0) * JUMP_SIZE ;
-		// jumps[i] = JUMP_SIZE;
-		auto pnt = nodes[i] ; 
-		if((pnt.distance(newPoint) - nearestPoint.distance(newPoint)) <= EPS and isEdgeObstacleFree(pnt, pnt.steer(newPoint, jumps[i])))
-			nearestPoint = pnt, nearestIndex = i ; 
-	}
-
-	return std::make_pair(nearestPoint, nearestIndex);
-}
-
 /*	Runs one iteration of RRT depending on user choice 
 	At least one new node is added on the screen each iteration. */
-bool RRT() {
+void RRT(Kdtree::KdTree &kdtree) {
 	Point newPoint, nearestPoint, nextPoint ; bool updated = false ; int cnt = 0 ; 
-	int nearestIndex = 0 ; double minCost = INF; nearby.clear(); jumps.resize(nodeCnt); 
+	int nearestIndex = 0 ; double minCost = INF;
 
+	vector < int > nearby ; 
+	int localNodeCnt = nodeCnt;
+
+	vector <int > jumps(localNodeCnt);
+	std::chrono::steady_clock::time_point begin;
+	std::chrono::steady_clock::time_point end; 
+	
+	int tid = omp_get_thread_num();
+	
+	
+	
 	while(!updated) {
+
+		
 		newPoint = pickRandomPoint(); 
+   		Kdtree::CoordPoint queryPoint({newPoint.x, newPoint.y});
+
 
 		// Find nearest point to the newPoint such that the next node 
-		auto nearest = findNearestIdx(newPoint);
-		nearestPoint = nearest.first;
-		nearestIndex = nearest.second;
-		nextPoint = stepNear(nearestPoint, newPoint, jumps[nearestIndex]);
+		// be added in graph in the (nearestPoint, newPoint) while being obstacle free
+
+
+		nearestPoint = *nodes.begin(); nearestIndex = 0;
+
+		
+		// Point nearestPoint2 = *nodes.begin(); 
+		// int nearestIndex2 = 0;
+		// vector <int > jumps2(localNodeCnt);
+
+		// begin = std::chrono::steady_clock::now();
+		// for(int i = 0; i < localNodeCnt; i++) {
+		// 	if(pathFound and randomCoordinate(0.0, 1.0) < 0.25) // Recalculate cost once in a while 
+		// 		cost[i] = cost[parent[i]] + distance(nodes[parent[i]], nodes[i]);  
+
+		// 	// Make smaller jumps sometimes to facilitate passing through narrow passages 
+		// 	jumps2[i] = randomCoordinate(0.3, 1.0) * JUMP_SIZE ; 
+		// 	auto pnt = nodes[i] ; 
+
+
+		// 	if((pnt.distance(newPoint) - nearestPoint2.distance(newPoint)) <= EPS and isEdgeObstacleFree(pnt, pnt.steer(newPoint, jumps2[i])))
+		// 		nearestPoint2 = pnt, nearestIndex2 = i ; 
+		// }
+
+		// end = std::chrono::steady_clock::now();
+
+
+		// if (tid == 0)
+		// 	std::cout << "baseline nearest neighbor with " << nodeCnt << " points " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
+
+		bool done = false;
+		int jump_idx = 0;
+		begin = std::chrono::steady_clock::now();
+		
+		while (!done && jump_idx < localNodeCnt) {
+			Kdtree::KdTreeNodeVec res;
+    		kdtree.k_nearest_neighbors(queryPoint, jump_idx+1, &res);
+
+			// Make smaller jumps sometimes to facilitate passing through narrow passages 
+			jumps[jump_idx] = randomCoordinate(0.3, 1.0) * JUMP_SIZE ; 
+			for (auto kdnode: res) {
+				Point pnt(kdnode->point[0], kdnode->point[1]);
+				if((pnt.distance(newPoint) - nearestPoint.distance(newPoint)) <= EPS and isEdgeObstacleFree(pnt, pnt.steer(newPoint, jumps[jump_idx]))) {
+					nearestPoint = pnt, nearestIndex = kdnode->index ; 
+					done = true;
+					break;
+				}
+			}
+			if (!done)
+				jump_idx++; 
+		}
+
+		end = std::chrono::steady_clock::now();
+
+		// std::cout << "done " << done << " nearest index  " << nearestIndex << " / " << nodeCnt <<  std::endl;
+		// std::cout << newPoint.distance(nearestPoint) << " " << newPoint.distance(nearestPoint2) << " " << newPoint.distance(nodes[nearestIndex2]) << " " << nearestIndex << " " << nearestIndex2 <<  std::endl;
+		// std::cout << nearestPoint.x << " " << nearestPoint.y << " " << std::endl;
+		// std::cout << nearestPoint2.x << " " <<nearestPoint2.y << std:: endl;
+		
+		if (tid == 0)
+			std::cout << "kdtree nearest neighbor with " << nodeCnt << " points " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
+
+		// nextPoint = stepNear(nearestPoint, newPoint, jumps[nearestIndex]);
+		nextPoint = stepNear(nearestPoint, newPoint, jumps[jump_idx]);
+
+		kdtree.insert(Kdtree::CoordPoint ({nextPoint.x, nextPoint.y}), nodeCnt);
+
+
 		if(!isEdgeObstacleFree(nearestPoint, nextPoint)) continue ; 
 
 		if( (whichRRT == 1) or (!pathFound and whichRRT == 3)) {
 			// This is where we don't do any RRT* optimization part 
 			updated = true ;
-			nodes.push_back(nextPoint); nodeCnt++;
-			parent.push_back(nearestIndex);
-			cost.push_back(cost[nearestIndex] + distance(nearestPoint, nextPoint));
-			if(!pathFound) {
-				if (checkDestinationReached()) {
-					return true;
-				}
+	
+			#pragma omp critical
+			{
+				nodes.push_back(nextPoint); nodeCnt++;
+				parent.push_back(nearestIndex);
+				cost.push_back(cost[nearestIndex] + distance(nearestPoint, nextPoint));
 			}
+
+			if(!pathFound) checkDestinationReached();
 			continue ; 
 		}
 
+
 		// Find nearby nodes to the new node as center in ball of radius DISK_SIZE 
-		for(int i = 0; i < nodeCnt; i++)
+		for(int i = 0; i < localNodeCnt; i++)
 			if((nodes[i].distance(nextPoint) - DISK_SIZE) <= EPS and isEdgeObstacleFree(nodes[i], nextPoint))
 				nearby.push_back(i);
 
@@ -252,34 +316,38 @@ bool RRT() {
 				minCost = cost[nodeIndex] + distance(nodes[nodeIndex], nextPoint), par = nodeIndex;
 		}
 
-		parent.push_back(par); cost.push_back(minCost);
-		nodes.push_back(nextPoint); nodeCnt++; 
-		updated = true ; 
-		if(!pathFound) {
-			if (checkDestinationReached()) {
-				return true;
-			}
+
+		#pragma omp critical
+		{
+			parent.push_back(par); cost.push_back(minCost);
+			nodes.push_back(nextPoint); nodeCnt++; 
 		}
-		rewire();
+
+
+
+		updated = true ; 
+		if(!pathFound) checkDestinationReached(); 
+		rewire(nearby);
 	}
-	return false;
 }
 
-int main() {
-	
-	whichRRT = 1; 
-	start.x = 0;
-	start.y = 0;
-	stop.x = 500;
-	stop.y = 500;
-	obstacle_cnt = 0; 
-	// getInput(); 
-	prepareInput();
-  sf::Vector2u dimensions(WIDTH, HEIGHT);
-    sf::RenderWindow window(sf::VideoMode(dimensions, 1), "Basic Anytime RRT");
+int main(int argc, char* argv[]) {
+
+	Kdtree::CoordPoint min_point({0, 0});
+	Kdtree::CoordPoint max_point({WIDTH, HEIGHT});
+	size_t num_dim = 2;
+	Kdtree::KdTree kdtree(min_point, max_point, num_dim);
+
+	std::chrono::steady_clock::time_point begin;
+	std::chrono::steady_clock::time_point end; 
+
+	getInput(); prepareInput(); 
+    sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "Basic Anytime RRT");
 
 	nodeCnt = 1; nodes.push_back(start); int iterations = 0 ; 
 	parent.push_back(0); cost.push_back(0);
+
+	kdtree.insert(Kdtree::CoordPoint ({start.x, start.y}), 0);
     sf::Time delayTime = sf::milliseconds(5);
 
     cout << endl << "Starting node is in Pink and Destination node is in Blue" << endl << endl ; 
@@ -294,11 +362,35 @@ int main() {
             	return 0; exit(0);
             }
         }
-		auto done = RRT(); 
-		if (done) {
-			return 0;
+
+		int num_threads = 1;
+		if (argc == 2)
+			num_threads = atoi(argv[1]);
+
+
+
+		#pragma omp parallel for
+		for (int i = 0; i < num_threads; i++) {
+			int tid = omp_get_thread_num();
+			if (tid==0)
+				begin = std::chrono::steady_clock::now();
+			{
+				RRT(kdtree);
+			}
+
+			#pragma omp atomic update
+			iterations++;
+			if (tid == 0)
+				end = std::chrono::steady_clock::now();
+
+			// if (tid == 0)
+			// 	std::cout << "total RRT = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
+
 		}
-		iterations++;
+
+
+
+
         
 		if(iterations % 500 == 0) {
 			cout << "Iterations: " << iterations << endl ; 

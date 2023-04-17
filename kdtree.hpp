@@ -79,6 +79,9 @@ class kdtree_node {
   void *data;
   // bounding rectangle of this node's subtree
   CoordPoint lobound, upbound;
+
+  int index; 
+
 };
 
 // base class for different distance computations
@@ -136,7 +139,7 @@ class KdTree {
                            KdTreeNodeVec* result, KdNodePredicate* pred = NULL);
   void range_nearest_neighbors(const CoordPoint& point, double r,
                                KdTreeNodeVec* result);
-  kdtree_node* insert(const CoordPoint& point);
+  kdtree_node* insert(const CoordPoint& point, int index);
 };
 
 }  // end namespace Kdtree
