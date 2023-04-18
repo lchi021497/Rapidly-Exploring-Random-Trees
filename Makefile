@@ -14,4 +14,4 @@ rrt.o:
 clean:
 	rm *.o sfml-app
 clean-test:
-	rm kdtree.o rm kd-tree-test
+	rm kd-tree-test
