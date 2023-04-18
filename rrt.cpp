@@ -5,9 +5,11 @@
 #include "geometry.h"
 #include <stdlib.h>
 #include <time.h>
-#include <omp.h>
+// #include <omp.h>
 #include <chrono> 
 #include "kdtree.hpp"
+
+#define ON_MAC true
 
 using namespace std ; 
 
@@ -17,7 +19,7 @@ const int RADIUS = 5 ;
 const double GOAL_SAMPLING_PROB = 0.05;
 const double INF = 1e18;
 
-const double JUMP_SIZE = (WIDTH/100.0 * HEIGHT/100.0)/15;
+const double JUMP_SIZE = (WIDTH/100.0 * HEIGHT/100.0)/150;
 const double DISK_SIZE = JUMP_SIZE ; // Ball radius around which nearby points are found 
 
 int whichRRT = 3 ; 
@@ -75,8 +77,17 @@ void prepareInput() {
 	// Make starting and ending point circles ready 
 	startingPoint.setRadius(RADIUS); endingPoint.setRadius(RADIUS); 
     startingPoint.setFillColor(sf::Color(208, 0, 240)); endingPoint.setFillColor(sf::Color::Blue);
+#if defined(ON_MAC)
+	sf::Vector2f start_position(start.x, start.y);
+    sf::Vector2f end_position(stop.x, stop.y);
+    startingPoint.setPosition(start_position); endingPoint.setPosition(end_position);
+    sf::Vector2f origin1(RADIUS/2, RADIUS/2);
+    sf::Vector2f origin2(RADIUS/2, RADIUS/2);
+    startingPoint.setOrigin(origin1); endingPoint.setOrigin(origin2);
+#else
     startingPoint.setPosition(start.x, start.y); endingPoint.setPosition(stop.x, stop.y);
     startingPoint.setOrigin(RADIUS/2, RADIUS/2); endingPoint.setOrigin(RADIUS/2, RADIUS/2);
+#endif
 
     // Prepare polygon of obstacles 
 	polygons.resize(obstacle_cnt);
@@ -109,7 +120,11 @@ void draw(sf::RenderWindow& window) {
 		Point par = nodes[parent[i]] ; 
 		line[0] = sf::Vertex(sf::Vector2f(par.x, par.y));
 		line[1] = sf::Vertex(sf::Vector2f(nodes[i].x, nodes[i].y));
+#if defined(ON_MAC)
+		window.draw(line, 2, sf::PrimitiveType::Lines);
+#else
 		window.draw(line, 2, sf::Lines);
+#endif
 	}
 
 	window.draw(startingPoint); window.draw(endingPoint);
@@ -122,7 +137,12 @@ void draw(sf::RenderWindow& window) {
 			line[0] = sf::Vertex(sf::Vector2f(nodes[par].x, nodes[par].y));
 			line[1] = sf::Vertex(sf::Vector2f(nodes[node].x, nodes[node].y));
 			line[0].color = line[1].color = sf::Color::Red; // orange color 
+#if defined(ON_MAC)
+			window.draw(line, 2, sf::PrimitiveType::Lines);
+			
+#else
 			window.draw(line, 2, sf::Lines);
+#endif
 			node = par ;
 		}
 	}
@@ -206,7 +226,7 @@ void RRT(Kdtree::KdTree &kdtree) {
 	std::chrono::steady_clock::time_point begin;
 	std::chrono::steady_clock::time_point end; 
 	
-	int tid = omp_get_thread_num();
+	// int tid = omp_get_thread_num();
 	
 	
 	
@@ -277,8 +297,8 @@ void RRT(Kdtree::KdTree &kdtree) {
 		// std::cout << nearestPoint.x << " " << nearestPoint.y << " " << std::endl;
 		// std::cout << nearestPoint2.x << " " <<nearestPoint2.y << std:: endl;
 		
-		if (tid == 0)
-			std::cout << "kdtree nearest neighbor with " << nodeCnt << " points " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
+		// if (tid == 0)
+			// std::cout << "kdtree nearest neighbor with " << nodeCnt << " points " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
 
 		// nextPoint = stepNear(nearestPoint, newPoint, jumps[nearestIndex]);
 		nextPoint = stepNear(nearestPoint, newPoint, jumps[jump_idx]);
@@ -341,8 +361,13 @@ int main(int argc, char* argv[]) {
 	std::chrono::steady_clock::time_point begin;
 	std::chrono::steady_clock::time_point end; 
 
-	getInput(); prepareInput(); 
+	getInput(); prepareInput();
+#if defined(ON_MAC)
+	sf::Vector2u dimensions(WIDTH, HEIGHT);
+    sf::RenderWindow window(sf::VideoMode(dimensions, 1), "Basic Anytime RRT");
+#else
     sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "Basic Anytime RRT");
+#endif
 
 	nodeCnt = 1; nodes.push_back(start); int iterations = 0 ; 
 	parent.push_back(0); cost.push_back(0);
@@ -371,17 +396,17 @@ int main(int argc, char* argv[]) {
 
 		#pragma omp parallel for
 		for (int i = 0; i < num_threads; i++) {
-			int tid = omp_get_thread_num();
-			if (tid==0)
-				begin = std::chrono::steady_clock::now();
-			{
+			// int tid = omp_get_thread_num();
+			// if (tid==0)
+				// begin = std::chrono::steady_clock::now();
+			// {
 				RRT(kdtree);
-			}
+			// }
 
 			#pragma omp atomic update
 			iterations++;
-			if (tid == 0)
-				end = std::chrono::steady_clock::now();
+			// if (tid == 0)
+				// end = std::chrono::steady_clock::now();
 
 			// if (tid == 0)
 			// 	std::cout << "total RRT = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;

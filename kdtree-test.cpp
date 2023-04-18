@@ -34,11 +34,11 @@ int main() {
 
     // use push instead of taking in vector
     Kdtree::KdTree kdtree(min_point, max_point, num_dim);
-    kdtree.insert(p1);
-    kdtree.insert(p2);
-    kdtree.insert(p3);
-    kdtree.insert(p4);
-    kdtree.insert(p5);
+    kdtree.insert(p1, 0);
+    kdtree.insert(p2, 1);
+    kdtree.insert(p3, 2);
+    kdtree.insert(p4, 3);
+    kdtree.insert(p5, 4);
 
     Kdtree::CoordPoint queryPoint({0, 0});
     Kdtree::KdTreeNodeVec res;
