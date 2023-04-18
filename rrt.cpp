@@ -172,13 +172,15 @@ Point pickRandomPoint() {
 	return Point(randomCoordinate(0, WIDTH), randomCoordinate(0, HEIGHT)); 
 }
 
-void checkDestinationReached() {
+bool checkDestinationReached() {
 	sf::Vector2f position = endingPoint.getPosition(); 
 	if(checkCollision(nodes[parent[nodeCnt - 1]], nodes.back(), Point(position.x, position.y), RADIUS)) {
 		pathFound = 1 ; 
 		goalIndex = nodeCnt - 1;
-		cout << "Reached!! With a distance of " << cost.back() << " units. " << endl << endl ; 
+		cout << "Reached!! With a distance of " << cost.back() << " units. " << endl << endl ;
+		return true; 
 	}
+	return false;
 }
 
 /* Inserts nodes on the path from rootIndex till Point q such 
@@ -222,7 +224,7 @@ void RRT(Kdtree::KdTree &kdtree) {
 	vector < int > nearby ; 
 	int localNodeCnt = nodeCnt;
 
-	vector <int > jumps(localNodeCnt);
+	vector <double > jumps(localNodeCnt);
 	std::chrono::steady_clock::time_point begin;
 	std::chrono::steady_clock::time_point end; 
 	
@@ -312,12 +314,12 @@ void RRT(Kdtree::KdTree &kdtree) {
 			// This is where we don't do any RRT* optimization part 
 			updated = true ;
 	
-			#pragma omp critical
-			{
+			// #pragma omp critical
+			// {
 				nodes.push_back(nextPoint); nodeCnt++;
 				parent.push_back(nearestIndex);
 				cost.push_back(cost[nearestIndex] + distance(nearestPoint, nextPoint));
-			}
+			// }
 
 			if(!pathFound) checkDestinationReached();
 			continue ; 
@@ -337,11 +339,11 @@ void RRT(Kdtree::KdTree &kdtree) {
 		}
 
 
-		#pragma omp critical
-		{
+		// #pragma omp critical
+		// {
 			parent.push_back(par); cost.push_back(minCost);
 			nodes.push_back(nextPoint); nodeCnt++; 
-		}
+		// }
 
 
 
@@ -361,7 +363,14 @@ int main(int argc, char* argv[]) {
 	std::chrono::steady_clock::time_point begin;
 	std::chrono::steady_clock::time_point end; 
 
-	getInput(); prepareInput();
+	whichRRT = 1; 
+	start.x = 0;
+	start.y = 0;
+	stop.x = 500;
+	stop.y = 500;
+	obstacle_cnt = 0; 
+	// getInput(); 
+	prepareInput();
 #if defined(ON_MAC)
 	sf::Vector2u dimensions(WIDTH, HEIGHT);
     sf::RenderWindow window(sf::VideoMode(dimensions, 1), "Basic Anytime RRT");
@@ -394,7 +403,7 @@ int main(int argc, char* argv[]) {
 
 
 
-		#pragma omp parallel for
+		// #pragma omp parallel for
 		for (int i = 0; i < num_threads; i++) {
 			// int tid = omp_get_thread_num();
 			// if (tid==0)
@@ -403,7 +412,7 @@ int main(int argc, char* argv[]) {
 				RRT(kdtree);
 			// }
 
-			#pragma omp atomic update
+			// #pragma omp atomic update
 			iterations++;
 			// if (tid == 0)
 				// end = std::chrono::steady_clock::now();
@@ -413,10 +422,6 @@ int main(int argc, char* argv[]) {
 
 		}
 
-
-
-
-        
 		if(iterations % 500 == 0) {
 			cout << "Iterations: " << iterations << endl ; 
 			if(!pathFound) cout << "Not reached yet :( " << endl ;
@@ -424,7 +429,7 @@ int main(int argc, char* argv[]) {
 			cout << endl ;
 		}
 
-		//sf::sleep(delayTime);
+		// sf::sleep(delayTime);
 		window.clear();
 		draw(window); 
         window.display();
