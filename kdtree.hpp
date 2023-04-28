@@ -14,6 +14,8 @@
 #include <cstdlib>
 #include <queue>
 #include <vector>
+#include <atomic>
+ 
 
 namespace Kdtree {
 
@@ -21,18 +23,18 @@ typedef std::vector<double> CoordPoint;
 typedef std::vector<double> DoubleVector;
 
 // for passing points to the constructor of kdtree
-// struct KdNode {
-//   CoordPoint point;
-//   void* data;
-//   int index;
-//   KdNode(const CoordPoint p, void* d = NULL, int i = -1) {
-//     point = p;
-//     data = d;
-//     index = i;
-//   }
-//   KdNode() { data = NULL; }
-// };
-// typedef std::vector<KdNode> KdNodeVector;
+struct KdNode {
+  CoordPoint point;
+  void* data;
+  int index;
+  KdNode(const CoordPoint p, void* d = NULL, int i = -1) {
+    point = p;
+    data = d;
+    index = i;
+  }
+  KdNode() { data = NULL; }
+};
+typedef std::vector<KdNode> KdNodeVector;
 class kdtree_node;
 typedef std::vector<CoordPoint> CoordPointVec;
 typedef std::vector<kdtree_node *> KdTreeNodeVec;
@@ -45,6 +47,11 @@ struct KdNodePredicate {
   virtual bool operator()(const kdtree_node*) const { return true; }
 };
 
+
+struct rewire_par_cost {
+  double cost;
+  kdtree_node *parent;
+};
 //--------------------------------------------------------
 // private helper classes used internally by KdTree
 //
@@ -62,6 +69,7 @@ class kdtree_node {
   ~kdtree_node() {
     if (loson) delete loson;
     if (hison) delete hison;
+    if (par_cost) delete par_cost;
   }
 
   // friend std::ostream& operator<< (std::ostream& s, const kdtree_node& node) {
@@ -75,12 +83,18 @@ class kdtree_node {
   // double cutval; // == point[cutdim]
   CoordPoint point;
   //  roots of the two subtrees
-  kdtree_node *loson, *hison;
+  std::atomic<kdtree_node*> loson, hison;
   void *data;
   // bounding rectangle of this node's subtree
   CoordPoint lobound, upbound;
 
+
   int index; 
+
+  std::atomic<rewire_par_cost*> par_cost;
+  // double cost;
+  // kdtree_node *parent;
+
 
 };
 
@@ -139,7 +153,7 @@ class KdTree {
                            KdTreeNodeVec* result, KdNodePredicate* pred = NULL);
   void range_nearest_neighbors(const CoordPoint& point, double r,
                                KdTreeNodeVec* result);
-  kdtree_node* insert(const CoordPoint& point, int index);
+  kdtree_node* insert(const CoordPoint& point, int index, double cost, kdtree_node *parent);
 };
 
 }  // end namespace Kdtree

@@ -216,7 +216,7 @@ kdtree_node* KdTree::build_tree(size_t depth, size_t a, size_t b) {
   return node;
 }
 
-kdtree_node* KdTree::insert(const CoordPoint& point, int index) {
+kdtree_node* KdTree::insert(const CoordPoint& point, int index, double cost, kdtree_node *parent) {
   size_t m;
   double temp, cutval;
   kdtree_node *ptr = root;
@@ -226,6 +226,10 @@ kdtree_node* KdTree::insert(const CoordPoint& point, int index) {
   node->upbound = upbound_;
   node->point = point;
   node->index = index;
+  node->par_cost = new rewire_par_cost();
+
+  node->par_cost.load()->cost = cost; 
+  node->par_cost.load()->parent = parent;
 
   if (root == nullptr) {
     root = node;
@@ -240,26 +244,45 @@ kdtree_node* KdTree::insert(const CoordPoint& point, int index) {
 
     cutval = ptr->point[node->cutdim];
 
+    int try_again = 0;
     if (node->point[node->cutdim] < cutval) {
       // go left
+
       node->upbound[node->cutdim] = cutval;
       if (ptr->loson == nullptr) {
-        ptr->loson = node;
-        break;
+        // ptr->loson = node;
+
+        kdtree_node *tmp = nullptr;
+        if ((ptr->loson).compare_exchange_weak(tmp, node, std::memory_order_release, std::memory_order_relaxed)) {
+          break;
+        }        
+        else {
+          try_again = 1;
+        }
       }
       ptr = ptr->loson;
       // printf("left\n");
     } else {
       node->lobound[node->cutdim] = cutval;
       if (ptr->hison == nullptr) {
-        ptr->hison = node;
-        break;
+        // ptr->hison = node;
+
+        kdtree_node *tmp = nullptr;
+        if ((ptr->hison).compare_exchange_weak(tmp, node, std::memory_order_release, std::memory_order_relaxed)) {
+          break;
+        }
+        else {
+          try_again = 1;
+        }
+        
       }
       ptr = ptr->hison;
       // printf("right\n");
     }
-
-    depth++;
+    if (try_again)
+      try_again = 0;
+    else 
+      depth++;
   }
   
   return node;
