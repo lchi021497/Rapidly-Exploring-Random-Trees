@@ -117,3 +117,4 @@ const double INF = 1e18;
 const double JUMP_SIZE = (WIDTH/100.0 * HEIGHT/100.0)/1.5;
 const double DISK_SIZE = JUMP_SIZE ; // Ball radius around which nearby points are found
 ```
+# rrt
