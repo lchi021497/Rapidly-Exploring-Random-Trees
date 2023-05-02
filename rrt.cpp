@@ -388,8 +388,14 @@ void RRT(Kdtree::KdTree &kdtree) {
 			num_neighbors++;
 		}
 
-		double tree_dist = (nearestPoint.x - newPoint.x) * (nearestPoint.x - newPoint.x) + (nearestPoint.y - newPoint.y) * (nearestPoint.y - newPoint.y);
+		// double golden_dist = (nearestPoint2.x - newPoint.x) * (nearestPoint2.x - newPoint.x) + (nearestPoint2.y - newPoint.y) * (nearestPoint2.y - newPoint.y);
+		// double tree_dist = (nearestPoint.x - newPoint.x) * (nearestPoint.x - newPoint.x) + (nearestPoint.y - newPoint.y) * (nearestPoint.y - newPoint.y);
+		// if (abs(golden_dist - tree_dist) > 0.0001) {
+		// 	printf("golden: %f %f %f \n", nearestPoint2.x, nearestPoint2.y, golden_dist);
+		// 	printf("%d, tree: %f %f %f \n", num_neighbors, nearestPoint.x, nearestPoint.y, tree_dist);
+		// }
 
+		
 		
 
 		end = std::chrono::steady_clock::now();
@@ -540,13 +546,6 @@ int main(int argc, char* argv[]) {
 		}
 		iterations+=num_threads;
 		nodeCnt += num_threads;
-
-		Kdtree::KdTreeNodeVec res;
-    	kdtree.k_nearest_neighbors(Kdtree::CoordPoint({0,0}), nodeCnt, &res);
-
-		std::sort(res.begin(), res.end(), [](const Kdtree::kdtree_node* lhs, const Kdtree::kdtree_node* rhs) {
-			return lhs->index < rhs->index;
-		});
 
 		if(iterations % 500 == 0) {
 			cout << "Iterations: " << iterations << endl ; 
