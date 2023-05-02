@@ -31,119 +31,6 @@ class compare_dimension {
 
 
 //--------------------------------------------------------------
-// different distance metrics
-//--------------------------------------------------------------
-class DistanceMeasure {
- public:
-  DistanceMeasure() {}
-  virtual ~DistanceMeasure() {}
-  virtual double distance(const CoordPoint& p, const CoordPoint& q) = 0;
-  virtual double coordinate_distance(double x, double y, size_t dim) = 0;
-};
-// Maximum distance (Linfinite norm)
-class DistanceL0 : virtual public DistanceMeasure {
-  DoubleVector* w;
-
- public:
-  DistanceL0(const DoubleVector* weights = NULL) {
-    if (weights)
-      w = new DoubleVector(*weights);
-    else
-      w = (DoubleVector*)NULL;
-  }
-  ~DistanceL0() {
-    if (w) delete w;
-  }
-  double distance(const CoordPoint& p, const CoordPoint& q) {
-    size_t i;
-    double dist, test;
-    if (w) {
-      dist = (*w)[0] * fabs(p[0] - q[0]);
-      for (i = 1; i < p.size(); i++) {
-        test = (*w)[i] * fabs(p[i] - q[i]);
-        if (test > dist) dist = test;
-      }
-    } else {
-      dist = fabs(p[0] - q[0]);
-      for (i = 1; i < p.size(); i++) {
-        test = fabs(p[i] - q[i]);
-        if (test > dist) dist = test;
-      }
-    }
-    return dist;
-  }
-  double coordinate_distance(double x, double y, size_t dim) {
-    if (w)
-      return (*w)[dim] * fabs(x - y);
-    else
-      return fabs(x - y);
-  }
-};
-// Manhatten distance (L1 norm)
-class DistanceL1 : virtual public DistanceMeasure {
-  DoubleVector* w;
-
- public:
-  DistanceL1(const DoubleVector* weights = NULL) {
-    if (weights)
-      w = new DoubleVector(*weights);
-    else
-      w = (DoubleVector*)NULL;
-  }
-  ~DistanceL1() {
-    if (w) delete w;
-  }
-  double distance(const CoordPoint& p, const CoordPoint& q) {
-    size_t i;
-    double dist = 0.0;
-    if (w) {
-      for (i = 0; i < p.size(); i++) dist += (*w)[i] * fabs(p[i] - q[i]);
-    } else {
-      for (i = 0; i < p.size(); i++) dist += fabs(p[i] - q[i]);
-    }
-    return dist;
-  }
-  double coordinate_distance(double x, double y, size_t dim) {
-    if (w)
-      return (*w)[dim] * fabs(x - y);
-    else
-      return fabs(x - y);
-  }
-};
-// Euklidean distance (L2 norm) (squared)
-class DistanceL2 : virtual public DistanceMeasure {
-  DoubleVector* w;
-
- public:
-  DistanceL2(const DoubleVector* weights = NULL) {
-    if (weights)
-      w = new DoubleVector(*weights);
-    else
-      w = (DoubleVector*)NULL;
-  }
-  ~DistanceL2() {
-    if (w) delete w;
-  }
-  double distance(const CoordPoint& p, const CoordPoint& q) {
-    size_t i;
-    double dist = 0.0;
-    if (w) {
-      for (i = 0; i < p.size(); i++)
-        dist += (*w)[i] * (p[i] - q[i]) * (p[i] - q[i]);
-    } else {
-      for (i = 0; i < p.size(); i++) dist += (p[i] - q[i]) * (p[i] - q[i]);
-    }
-    return dist;
-  }
-  double coordinate_distance(double x, double y, size_t dim) {
-    if (w)
-      return (*w)[dim] * (x - y) * (x - y);
-    else
-      return (x - y) * (x - y);
-  }
-};
-
-//--------------------------------------------------------------
 // destructor and constructor of kdtree
 //--------------------------------------------------------------
 KdTree::~KdTree() {
@@ -301,9 +188,9 @@ void KdTree::k_nearest_neighbors(const CoordPoint& point, size_t k,
   while (!neighborheap->empty()) {
     auto nn = neighborheap->top();
     neighborheap->pop();
-    result->push_back(nn.node_);
-    std::reverse(result->begin(), result->end());
+    result->push_back(nn.node_); 
   }
+  std::reverse(result->begin(), result->end());
 }
 
 //--------------------------------------------------------------
