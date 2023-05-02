@@ -377,7 +377,7 @@ void RRT(Kdtree::KdTree &kdtree) {
 					nearestIndex = nearest_neighbor->index ; 
 					best_jump = jump_idx;
 					done = true;
-					break;
+					// break;
 				}
 
 
@@ -471,7 +471,7 @@ int main(int argc, char* argv[]) {
 	std::chrono::steady_clock::time_point begin;
 	std::chrono::steady_clock::time_point end; 
 
-	whichRRT = 3; 
+	whichRRT = 1; 
 	start.x = 0;
 	start.y = 0;
 	stop.x = 500;
