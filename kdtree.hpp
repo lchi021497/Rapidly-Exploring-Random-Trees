@@ -15,7 +15,8 @@
 #include <cstdlib>
 #include <queue>
 #include <vector>
-#include <ostream>
+#include <atomic>
+#include <iostream> 
 
 namespace Kdtree {
 
@@ -23,18 +24,18 @@ typedef std::vector<double> CoordPoint;
 typedef std::vector<double> DoubleVector;
 
 // for passing points to the constructor of kdtree
-// struct KdNode {
-//   CoordPoint point;
-//   void* data;
-//   int index;
-//   KdNode(const CoordPoint p, void* d = NULL, int i = -1) {
-//     point = p;
-//     data = d;
-//     index = i;
-//   }
-//   KdNode() { data = NULL; }
-// };
-// typedef std::vector<KdNode> KdNodeVector;
+struct KdNode {
+  CoordPoint point;
+  void* data;
+  int index;
+  KdNode(const CoordPoint p, void* d = NULL, int i = -1) {
+    point = p;
+    data = d;
+    index = i;
+  }
+  KdNode() { data = NULL; }
+};
+typedef std::vector<KdNode> KdNodeVector;
 class kdtree_node;
 typedef std::vector<CoordPoint> CoordPointVec;
 typedef std::vector<kdtree_node *> KdTreeNodeVec;
@@ -47,20 +48,12 @@ struct KdNodePredicate {
   virtual bool operator()(const kdtree_node*) const { return true; }
 };
 
-//--------------------------------------------------------
-// private helper classes used internally by KdTree
-//
-// the internal node structure used by kdtree
-template<typename ... Args>
-std::string string_format( const std::string& format, Args ... args )
-{
-    int size_s = std::snprintf( nullptr, 0, format.c_str(), args ... ) + 1; // Extra space for '\0'
-    if( size_s <= 0 ){ throw std::runtime_error( "Error during formatting." ); }
-    auto size = static_cast<size_t>( size_s );
-    std::unique_ptr<char[]> buf( new char[ size ] );
-    std::snprintf( buf.get(), size, format.c_str(), args ... );
-    return std::string( buf.get(), buf.get() + size - 1 ); // We don't want the '\0' inside
-}
+
+struct rewire_par_cost {
+  double cost;
+  kdtree_node *parent;
+};
+
 class kdtree_node {
  public:
   kdtree_node() {
@@ -72,8 +65,9 @@ class kdtree_node {
     return loson == nullptr && hison == nullptr;
   }
   ~kdtree_node() {
-    if (loson) delete loson;
-    if (hison) delete hison;
+    // if (loson) delete loson;
+    // if (hison) delete hison;
+    // if (par_cost) delete par_cost;
   }
 
   // std::ostream &operator<<(std::ostream &output_stream) {
@@ -92,12 +86,18 @@ class kdtree_node {
   // double cutval; // == point[cutdim]
   CoordPoint point;
   //  roots of the two subtrees
-  kdtree_node *loson, *hison;
+  std::atomic<kdtree_node*> loson, hison;
   void *data;
   // bounding rectangle of this node's subtree
   CoordPoint lobound, upbound;
 
+
   int index; 
+
+  std::atomic<rewire_par_cost*> par_cost;
+  // double cost;
+  // kdtree_node *parent;
+
 
 };
 
@@ -156,7 +156,7 @@ class KdTree {
                            KdTreeNodeVec* result, KdNodePredicate* pred = NULL);
   void range_nearest_neighbors(const CoordPoint& point, double r,
                                KdTreeNodeVec* result);
-  kdtree_node* insert(const CoordPoint& point, int index);
+  kdtree_node* insert(const CoordPoint& point, int index, double cost, kdtree_node *parent);
 };
 
 //--------------------------------------------------------------
