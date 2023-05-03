@@ -14,6 +14,7 @@
 #include <limits>
 #include <stdexcept>
 #include <cassert>
+#include <stack>
 
 namespace Kdtree {
 
@@ -119,23 +120,26 @@ kdtree_node* KdTree::insert(const CoordPoint& point, int index, double cost, kdt
   node->par_cost.load()->parent = parent;
 
   if (root == nullptr) {
-    root = node;
+    root = node; 
     return node;
   }
 
   assert(root != nullptr);
-  int depth = 0;
+  int depth = 1;
   // iterate through the kd tree to find position to insert
   while (true) {
     node->cutdim = depth % dimension_;
 
-    cutval = ptr->point[node->cutdim];
+    cutval = ptr->point[ptr->cutdim];
 
     int try_again = 0;
-    if (node->point[node->cutdim] < cutval) {
+    if (ptr->point[ptr->cutdim] < cutval) {
       // go left
 
-      node->upbound[node->cutdim] = cutval;
+      // copy parents bounds
+      node->lobound = ptr->lobound;
+      node->upbound = ptr->upbound;
+      node->upbound[ptr->cutdim] = cutval;
       if (ptr->loson == nullptr) {
         // ptr->loson = node;
 
@@ -150,7 +154,10 @@ kdtree_node* KdTree::insert(const CoordPoint& point, int index, double cost, kdt
       ptr = ptr->loson;
       // printf("left\n");
     } else {
-      node->lobound[node->cutdim] = cutval;
+      // copy parents bounds
+      node->lobound = ptr->lobound;
+      node->upbound = ptr->upbound;
+      node->lobound[ptr->cutdim] = cutval;
       if (ptr->hison == nullptr) {
         // ptr->hison = node;
 
@@ -174,6 +181,13 @@ kdtree_node* KdTree::insert(const CoordPoint& point, int index, double cost, kdt
   
   return node;
 }
+
+void KdTree::print_tree() {
+  auto ptr = root;
+
+  // dfs
+  print_nested_node(std::cout, *root, 1);
+ }
 
 
 
@@ -274,15 +288,16 @@ bool KdTree::neighbor_search(const CoordPoint& point, kdtree_node* node,
     dist = neighborheap->top().distance;
   }
   if (point[node->cutdim] < node->point[node->cutdim]) {
-    if (node->hison && bounds_overlap_ball(point, dist, node->hison))
+    if (node->hison) // && bounds_overlap_ball(point, dist, node->hison))
       if (neighbor_search(point, node->hison, k, neighborheap, depth + 1)) return true;
   } else {
-    if (node->loson && bounds_overlap_ball(point, dist, node->loson))
+    if (node->loson) // && bounds_overlap_ball(point, dist, node->loson))
       if (neighbor_search(point, node->loson, k, neighborheap, depth + 1)) return true;
   }
 
   if (neighborheap->size() == k) dist = neighborheap->top().distance;
-  return ball_within_bounds(point, dist, node);
+  return false;
+  // return ball_within_bounds(point, dist, node);
 }
 
 //--------------------------------------------------------------

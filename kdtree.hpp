@@ -75,9 +75,29 @@ class kdtree_node {
   //   return output_stream;
   // }
 
+  friend std::ostream& print_nested_node (std::ostream& s, const kdtree_node& node, int depth) {
+    s << "Node(y=" << node.point[0] << ", x=" << node.point[1] << ", cutdim=" << node.cutdim << ", loson=\n";
+    for (int i = 0; i < depth; i++) {
+      s << "\t";
+    }
+    if (node.loson != nullptr)
+      print_nested_node(s, *node.loson, depth+1);
+    s << ", hison=\n";
+    for (int i =0 ;i < depth; i++) {
+      s << "\t";
+    }
+    if (node.hison != nullptr) 
+      print_nested_node(s, *node.hison, depth+1);
+    return s;
+  }
+
   friend std::ostream& operator<< (std::ostream& s, const kdtree_node& node) {
-    s << node.point[0] << ", " << node.point[1];
-    s << "\n";
+    s << "Node(y=" << node.point[0] << ", x=" << node.point[1] << ", loson=\n\t";
+    if (node.loson != nullptr)
+      s << *node.loson;
+    s << ", hison=\n\t";
+    if (node.hison != nullptr) 
+      s << *node.hison;
     return s;
   }
   // cutting dimension
@@ -151,6 +171,7 @@ class KdTree {
   KdTree(CoordPoint min_point, CoordPoint max_point, size_t dimension, int distance_type = 2);
   KdTree(const CoordPointVec nodes, CoordPoint min_point, CoordPoint max_point, size_t dimension, int distance_type = 2);
   ~KdTree();
+  void print_tree();
   void set_distance(int distance_type, const DoubleVector* weights = NULL);
   void k_nearest_neighbors(const CoordPoint& point, size_t k,
                            KdTreeNodeVec* result, KdNodePredicate* pred = NULL);

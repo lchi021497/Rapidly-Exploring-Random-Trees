@@ -12,20 +12,20 @@
 #include <atomic>
  
 
-// #define ON_MAC true
+#define ON_MAC true
 
 using namespace std ; 
 
-const int WIDTH = 800 ;
-const int HEIGHT = 600 ;
+const int WIDTH = 1200 ;
+const int HEIGHT = 800 ;
 const int RADIUS = 5 ; 
 const double GOAL_SAMPLING_PROB = 0.05;
 const double INF = 1e18;
 
-const double JUMP_SIZE = (WIDTH/100.0 * HEIGHT/100.0)/1.5;
+const double JUMP_SIZE = (WIDTH/100.0 * HEIGHT/100.0)/1.50;
 const double DISK_SIZE = JUMP_SIZE ; // Ball radius around which nearby points are found 
 
-int whichRRT = 3 ; 
+int whichRRT = 1 ; 
 
 vector < Polygon > obstacles ; 
 Point start, stop ; 
@@ -43,36 +43,68 @@ sf::CircleShape startingPoint, endingPoint ;
 bool pathFound = 0 ;
 
 void getInput() {
-	cout << "NOTE:" << endl ; 
-	cout << "Height of screen: " << HEIGHT << " pixels." ;
-	cout << " Width of screeen: " << WIDTH << " pixels." << endl ;
-	cout << "Maximum distance by which algorithm jumps from one point to another: " << JUMP_SIZE << " units" << endl ;
-	cout << "If you would like to change of any of these, please make modifications in code" << endl ; 
-	cout << "Please provide your inputs keeping this in mind. " << endl << endl ;
+	// cout << "NOTE:" << endl ; 
+	// cout << "Height of screen: " << HEIGHT << " pixels." ;
+	// cout << " Width of screeen: " << WIDTH << " pixels." << endl ;
+	// cout << "Maximum distance by which algorithm jumps from one point to another: " << JUMP_SIZE << " units" << endl ;
+	// cout << "If you would like to change of any of these, please make modifications in code" << endl ; 
+	// cout << "Please provide your inputs keeping this in mind. " << endl << endl ;
 
-	cout << "Which type of RRT would you like to watch? 1 for RRT, 2 for RRT*, 3 for Anytime RRT" << endl ;
-	cin >> whichRRT ; 
-	cout << "Input co-ordinates of starting and ending point respectively in this format X1 Y1 X2 Y2" << endl ;
-	cin >> start.x >> start.y >> stop.x >> stop.y ;
-	cout << "How many obstacles?" << endl ; 
-	cin >> obstacle_cnt ; 
+	// cout << "Which type of RRT would you like to watch? 1 for RRT, 2 for RRT*, 3 for Anytime RRT" << endl ;
+	// cin >> whichRRT ; 
+	// cout << "Input co-ordinates of starting and ending point respectively in this format X1 Y1 X2 Y2" << endl ;
+	// cin >> start.x >> start.y >> stop.x >> stop.y ;
+	// cout << "How many obstacles?" << endl ; 
+	// cin >> obstacle_cnt ; 
 	
-	obstacles.resize(obstacle_cnt); 
-	int pnts = 0 ; Point pnt ; 
-	vector < Point > poly ; 
+	// obstacles.resize(obstacle_cnt); 
+	// int pnts = 0 ; Point pnt ; 
+	// vector < Point > poly ; 
 	
-	for(int i = 0; i < obstacle_cnt; i++) {
-		poly.clear();
-		cout << "How many points in " << i+1 << "th polygon?" << endl ; 
-		cin >> pnts ; 
-		poly.resize(pnts);
+	// for(int i = 0; i < obstacle_cnt; i++) {
+	// 	poly.clear();
+	// 	cout << "How many points in " << i+1 << "th polygon?" << endl ; 
+	// 	cin >> pnts ; 
+	// 	poly.resize(pnts);
 
-		cout << "Input co-ordinates of " << i+1 << "th polygon in clockwise order" << endl ;
-		for(int j = 0; j < pnts; j++) {
-			cin >> pnt.x >> pnt.y ; 
-			obstacles[i].addPoint(pnt);
-		}
-	}
+	// 	cout << "Input co-ordinates of " << i+1 << "th polygon in clockwise order" << endl ;
+	// 	for(int j = 0; j < pnts; j++) {
+	// 		cin >> pnt.x >> pnt.y ; 
+	// 		obstacles[i].addPoint(pnt);
+	// 	}
+	// }
+
+	whichRRT = 3;
+	start.x = 100;
+	start.y = 100;
+	stop.x = 700;
+	stop.y = 500;
+
+	obstacle_cnt = 0;
+	// obstacle_cnt = 2;
+	// obstacles.resize(obstacle_cnt); 
+
+	// Point pnt;
+	// pnt.x = 200; pnt.y = 480;
+	// obstacles[0].addPoint(pnt);
+	// pnt.x = 200; pnt.y = 100;
+	// obstacles[0].addPoint(pnt);
+	// pnt.x = 250; pnt.y = 100;
+	// obstacles[0].addPoint(pnt);
+	// pnt.x = 250; pnt.y = 480;
+	// obstacles[0].addPoint(pnt);
+
+	// pnt.x = 400; pnt.y = 0;
+	// obstacles[1].addPoint(pnt);
+	// pnt.x = 300; pnt.y = 100;
+	// obstacles[1].addPoint(pnt);
+	// pnt.x = 350; pnt.y = 250;
+	// obstacles[1].addPoint(pnt);
+	// pnt.x = 450; pnt.y = 250;
+	// obstacles[1].addPoint(pnt);
+	// pnt.x = 500; pnt.y = 100;
+	// obstacles[1].addPoint(pnt);
+
 }
 
 // Prepares SFML objects of starting, ending point and obstacles 
@@ -362,12 +394,12 @@ void RRT(Kdtree::KdTree &kdtree) {
 				jumps[jump_idx] = randomCoordinate(0.3, 1.0) * JUMP_SIZE ; 
 				Point pnt(kdnode->point[0], kdnode->point[1]);
 			
-				if (kdnode->par_cost.load()->parent != nullptr) {
-					Point parentPnt(kdnode->par_cost.load()->parent->point[0], kdnode->par_cost.load()->parent->point[1]);
+				// if (kdnode->par_cost.load()->parent != nullptr) {
+				// 	Point parentPnt(kdnode->par_cost.load()->parent->point[0], kdnode->par_cost.load()->parent->point[1]);
 
-					if(pathFound and randomCoordinate(0.0, 1.0) < 0.25) // Recalculate cost once in a while 
-						kdnode->par_cost.load()->cost = kdnode->par_cost.load()->parent->par_cost.load()->cost +  distance(parentPnt, pnt);
-				}
+				// 	if(pathFound and randomCoordinate(0.0, 1.0) < 0.25) // Recalculate cost once in a while 
+				// 		kdnode->par_cost.load()->cost = kdnode->par_cost.load()->parent->par_cost.load()->cost +  distance(parentPnt, pnt);
+				// }
 
 
 
@@ -403,8 +435,6 @@ void RRT(Kdtree::KdTree &kdtree) {
 		nextPoint = stepNear(nearestPoint, newPoint, jumps[best_jump]);
 
 		if(!isEdgeObstacleFree(nearestPoint, nextPoint)) continue ; 
-
-
 
 
 		if( (whichRRT == 1) or (!pathFound and whichRRT == 3)) {
@@ -462,8 +492,8 @@ void RRT(Kdtree::KdTree &kdtree) {
 
 		if(!pathFound) checkDestinationReached(newNode);
 
-		rewire(nearby2, index);
-		rewire(nearby, newNode);
+		// rewire(nearby2, index);
+		// rewire(nearby, newNode);
 	}
 }
 
@@ -483,7 +513,7 @@ int main(int argc, char* argv[]) {
 	stop.x = 500;
 	stop.y = 500;
 	obstacle_cnt = 0; 
-	// getInput(); 
+	getInput(); 
 	prepareInput();
 #if defined(ON_MAC)
 	sf::Vector2u dimensions(WIDTH, HEIGHT);
