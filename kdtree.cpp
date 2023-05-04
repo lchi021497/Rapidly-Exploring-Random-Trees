@@ -288,16 +288,16 @@ bool KdTree::neighbor_search(const CoordPoint& point, kdtree_node* node,
     dist = neighborheap->top().distance;
   }
   if (point[node->cutdim] < node->point[node->cutdim]) {
-    if (node->hison) // && bounds_overlap_ball(point, dist, node->hison))
+    if (node->hison && bounds_overlap_ball(point, dist, node->hison))
       if (neighbor_search(point, node->hison, k, neighborheap, depth + 1)) return true;
   } else {
-    if (node->loson) // && bounds_overlap_ball(point, dist, node->loson))
+    if (node->loson && bounds_overlap_ball(point, dist, node->loson))
       if (neighbor_search(point, node->loson, k, neighborheap, depth + 1)) return true;
   }
 
   if (neighborheap->size() == k) dist = neighborheap->top().distance;
-  return false;
-  // return ball_within_bounds(point, dist, node);
+  // return false;
+  return ball_within_bounds(point, dist, node);
 }
 
 //--------------------------------------------------------------
