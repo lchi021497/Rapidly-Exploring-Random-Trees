@@ -218,7 +218,7 @@ Point pickRandomPoint() {
 	return Point(randomCoordinate(0, WIDTH), randomCoordinate(0, HEIGHT)); 
 }
 
-bool checkDestinationReached(Kdtree::kdtree_node *newNode) {
+bool checkDestinationReached(Kdtree::kdtree_node *newNode, Kdtree::KdTree &kdtree) {
 	sf::Vector2f position = endingPoint.getPosition(); 
 
 	Kdtree::kdtree_node *parent = newNode->par_cost.load()->parent;
@@ -230,9 +230,13 @@ bool checkDestinationReached(Kdtree::kdtree_node *newNode) {
 	Point parentPoint = Point(newNode->par_cost.load()->parent->point[0], newNode->par_cost.load()->parent->point[1]);
 
 	if(checkCollision(parentPoint, newNodePoint, Point(position.x, position.y), RADIUS)) {
-		pathFound = 1 ; 
-		goalNode = newNode;
-		cout << "tree: Reached!! With a distance of " << newNode->par_cost.load()->cost << " units. " << endl << endl ;
+		pathFound = 1 ;
+
+		Point goalPoint({stop.x, stop.y});
+		double cost_node = newNode->par_cost.load()->cost + distance(newNodePoint, goalPoint);
+
+		goalNode = kdtree.insert(Kdtree::CoordPoint ({stop.x, stop.y}), 0, cost_node, newNode);
+		cout << "tree: Reached!! With a distance of " << cost_node << " units. " << endl << endl ;
 		return true; 
 	}
 	return false;
@@ -244,7 +248,6 @@ void rewire(Kdtree::KdTreeNodeVec nearby, Kdtree::kdtree_node *newNode) {
 
 	for (auto kdnode: nearby) {
 		if (kdnode->par_cost.load()->parent == nullptr) continue;
-		if (newNode->index == kdnode-> index) continue;
 
 		Kdtree::kdtree_node *par = newNode; 
 		Point parPnt = Point(par->point[0], par->point[1]);
@@ -339,7 +342,7 @@ void RRT(Kdtree::KdTree &kdtree) {
 			double cost_node = nearest_neighbor->par_cost.load()->cost + distance(nearestPoint, nextPoint);
 			Kdtree::kdtree_node *newNode = kdtree.insert(Kdtree::CoordPoint ({nextPoint.x, nextPoint.y}), index, cost_node, nearest_neighbor);
 
-			if(!pathFound) checkDestinationReached(newNode);
+			if(!pathFound) checkDestinationReached(newNode, kdtree);
 
 			continue ; 
 		}
@@ -369,7 +372,7 @@ void RRT(Kdtree::KdTree &kdtree) {
 
 		updated = true ; 
 
-		if(!pathFound) checkDestinationReached(newNode);
+		if(!pathFound) checkDestinationReached(newNode, kdtree);
 
 		rewire(nearby, newNode);
 	}
