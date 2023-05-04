@@ -162,6 +162,8 @@ void draw(sf::RenderWindow& window, Kdtree::KdTree &kdtree) {
 		nodeCircle.setFillColor(sf::Color(0, 255, 171)); nodeCircle.setPosition(node.x, node.y); 
 		window.draw(nodeCircle);
 	}
+
+
 	*/
 
 	// Draw obstacles 
@@ -176,8 +178,17 @@ void draw(sf::RenderWindow& window, Kdtree::KdTree &kdtree) {
 
 		Kdtree::kdtree_node *ptr = goalNode;
 
+		std::vector<int> path; 
 		while(ptr->par_cost.load()->parent != nullptr) {
 
+			if (std::find(path.begin(), path.end(), ptr->index) != path.end()) {
+				printf("found cycle of length %ld", path.size());
+				goalNode = nullptr;
+				pathFound = 0;
+				break;
+			}
+
+			path.push_back(ptr->index);
 			line[0] = sf::Vertex(sf::Vector2f(ptr->par_cost.load()->parent->point[0], ptr->par_cost.load()->parent->point[1]));
 			line[1] = sf::Vertex(sf::Vector2f(ptr->point[0], ptr->point[1]));
 			line[0].color = line[1].color = sf::Color::Red; // orange color 
@@ -233,9 +244,12 @@ bool checkDestinationReached(Kdtree::kdtree_node *newNode, Kdtree::KdTree &kdtre
 		pathFound = 1 ;
 
 		Point goalPoint({stop.x, stop.y});
-		double cost_node = newNode->par_cost.load()->cost + distance(newNodePoint, goalPoint);
 
-		goalNode = kdtree.insert(Kdtree::CoordPoint ({stop.x, stop.y}), 0, cost_node, newNode);
+		// goalNode = newNode;
+		// cout << "tree: Reached!! With a distance of " << newNode->par_cost.load()->cost << " units. " << endl << endl ;
+		
+		double cost_node = newNode->par_cost.load()->cost + distance(newNodePoint, goalPoint);
+		goalNode = kdtree.insert(Kdtree::CoordPoint ({stop.x, stop.y}), -1, cost_node, newNode);
 		cout << "tree: Reached!! With a distance of " << cost_node << " units. " << endl << endl ;
 		return true; 
 	}
@@ -247,6 +261,8 @@ bool checkDestinationReached(Kdtree::kdtree_node *newNode, Kdtree::KdTree &kdtre
 void rewire(Kdtree::KdTreeNodeVec nearby, Kdtree::kdtree_node *newNode) {
 
 	for (auto kdnode: nearby) {
+
+		if (kdnode->index == newNode->index) continue;
 		if (kdnode->par_cost.load()->parent == nullptr) continue;
 
 		Kdtree::kdtree_node *par = newNode; 
@@ -258,7 +274,7 @@ void rewire(Kdtree::KdTreeNodeVec nearby, Kdtree::kdtree_node *newNode) {
 		if (!isEdgeObstacleFree(curPnt, parPnt)) continue;
 
 
-		if ( ((par->par_cost.load()->cost + distance(parPnt, curPnt)) - cur->par_cost.load()->cost) <= EPS) {
+		while ( ((par->par_cost.load()->cost + distance(parPnt, curPnt)) - cur->par_cost.load()->cost) <= EPS) {
 
 
 			Kdtree::rewire_par_cost *old = cur->par_cost;
@@ -268,9 +284,9 @@ void rewire(Kdtree::KdTreeNodeVec nearby, Kdtree::kdtree_node *newNode) {
 			newValue->parent = par; 
 			newValue->cost = par->par_cost.load()->cost + distance(parPnt, curPnt); 
 			
-			if ((cur->par_cost).compare_exchange_strong(old, newValue, std::memory_order_release, std::memory_order_relaxed)) {
+			if ((cur->par_cost).compare_exchange_weak(old, newValue, std::memory_order_release, std::memory_order_relaxed)) {
 				delete old;
-				// break;
+				break;
 			}
 			else {
 				delete newValue;
@@ -290,6 +306,8 @@ void RRT(Kdtree::KdTree &kdtree) {
 
 	std::chrono::steady_clock::time_point begin;
 	std::chrono::steady_clock::time_point end; 
+
+	int index = nodeCnt + omp_get_thread_num();
 	
 	while(!updated) {
 
@@ -333,7 +351,7 @@ void RRT(Kdtree::KdTree &kdtree) {
 			// This is where we don't do any RRT* optimization part 
 			updated = true ;
 			double cost_node = nearest_neighbor->par_cost.load()->cost + distance(nearestPoint, nextPoint);
-			Kdtree::kdtree_node *newNode = kdtree.insert(Kdtree::CoordPoint ({nextPoint.x, nextPoint.y}), 0, cost_node, nearest_neighbor);
+			Kdtree::kdtree_node *newNode = kdtree.insert(Kdtree::CoordPoint ({nextPoint.x, nextPoint.y}), index, cost_node, nearest_neighbor);
 
 			if(!pathFound) checkDestinationReached(newNode, kdtree);
 
@@ -360,7 +378,7 @@ void RRT(Kdtree::KdTree &kdtree) {
 			}
 		}
 	
-		Kdtree::kdtree_node *newNode = kdtree.insert(Kdtree::CoordPoint ({nextPoint.x, nextPoint.y}), 0, minCost, optim_parent);
+		Kdtree::kdtree_node *newNode = kdtree.insert(Kdtree::CoordPoint ({nextPoint.x, nextPoint.y}), index, minCost, optim_parent);
 
 		updated = true ; 
 
