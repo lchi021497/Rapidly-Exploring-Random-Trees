@@ -17,6 +17,7 @@
 #include <vector>
 #include <atomic>
 #include <iostream> 
+#include <math.h>
 
 namespace Kdtree {
 

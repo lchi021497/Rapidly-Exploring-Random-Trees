@@ -133,7 +133,7 @@ kdtree_node* KdTree::insert(const CoordPoint& point, int index, double cost, kdt
     cutval = ptr->point[ptr->cutdim];
 
     int try_again = 0;
-    if (ptr->point[ptr->cutdim] < cutval) {
+    if (point[ptr->cutdim] < cutval) {
       // go left
 
       // copy parents bounds
@@ -173,9 +173,7 @@ kdtree_node* KdTree::insert(const CoordPoint& point, int index, double cost, kdt
       ptr = ptr->hison;
       // printf("right\n");
     }
-    if (try_again)
-      try_again = 0;
-    else 
+    if (!try_again)
       depth++;
   }
   
@@ -243,11 +241,13 @@ void KdTree::range_nearest_neighbors(const CoordPoint& point, double r,
     throw std::invalid_argument(
         "kdtree::k_nearest_neighbors(): point must be of same dimension as "
         "kdtree");
+
   if (this->distance_type == 2) {
     // if euclidien distance is used the range must be squared because we
     // get squared distances from this implementation
     r *= r;
   }
+
 
   // collect result in range_result
   range_search(point, root, r, *result);
@@ -327,12 +327,17 @@ bool KdTree::bounds_overlap_ball(const CoordPoint& point, double dist,
   for (i = 0; i < dimension_; i++) {
     if (point[i] < node->lobound[i]) {  // lower than low boundary
       distsum += distance->coordinate_distance(point[i], node->lobound[i], i);
+      // printf("lo %f %f\n", distsum, node->lobound[i]);
       if (distsum > dist) return false;
     } else if (point[i] > node->upbound[i]) {  // higher than high boundary
       distsum += distance->coordinate_distance(point[i], node->upbound[i], i);
+      // printf("up %f %f\n", distsum, node->upbound[i]);
+
       if (distsum > dist) return false;
     }
   }
+  // printf("%f\n", distsum);
+
   return true;
 }
 
