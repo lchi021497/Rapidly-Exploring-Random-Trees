@@ -295,8 +295,6 @@ void RRT(Kdtree::KdTree &kdtree) {
 	std::chrono::steady_clock::time_point begin;
 	std::chrono::steady_clock::time_point end; 
 	
-	int index = nodeCnt + omp_get_thread_num();
-	
 	while(!updated) {
 
 		
@@ -340,7 +338,7 @@ void RRT(Kdtree::KdTree &kdtree) {
 			// This is where we don't do any RRT* optimization part 
 			updated = true ;
 			double cost_node = nearest_neighbor->par_cost.load()->cost + distance(nearestPoint, nextPoint);
-			Kdtree::kdtree_node *newNode = kdtree.insert(Kdtree::CoordPoint ({nextPoint.x, nextPoint.y}), index, cost_node, nearest_neighbor);
+			Kdtree::kdtree_node *newNode = kdtree.insert(Kdtree::CoordPoint ({nextPoint.x, nextPoint.y}), 0, cost_node, nearest_neighbor);
 
 			if(!pathFound) checkDestinationReached(newNode, kdtree);
 
@@ -368,7 +366,7 @@ void RRT(Kdtree::KdTree &kdtree) {
 			}
 		}
 	
-		Kdtree::kdtree_node *newNode = kdtree.insert(Kdtree::CoordPoint ({nextPoint.x, nextPoint.y}), index, minCost, optim_parent);
+		Kdtree::kdtree_node *newNode = kdtree.insert(Kdtree::CoordPoint ({nextPoint.x, nextPoint.y}), 0, minCost, optim_parent);
 
 		updated = true ; 
 
