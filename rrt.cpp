@@ -355,7 +355,6 @@ void RRT(Kdtree::KdTree &kdtree) {
 
 		for (auto kdnode:nearby) {
 
-			if (kdnode->index == nearest_neighbor->index) continue;
 			Point nodePnt(kdnode->point[0], kdnode->point[1]);
 
 			if (!isEdgeObstacleFree(nodePnt, nextPoint)) continue;
