@@ -69,36 +69,118 @@ void getInput() {
 	// 	}
 	// }
 
-	whichRRT = 2;
-	start.x = 100;
-	start.y = 100;
-	stop.x = 700;
-	stop.y = 500;
+	// whichRRT = 2;
+	// start.x = 50;
+	// start.y = 50;
+	// stop.x = 1150;
+	// stop.y = 750;
 
-	obstacle_cnt = 0;
-	obstacle_cnt = 2;
-	obstacles.resize(obstacle_cnt); 
+	// obstacle_cnt = 0;
+	// obstacles.resize(obstacle_cnt); 
 
 	Point pnt;
-	pnt.x = 200; pnt.y = 480;
+
+	whichRRT = 2;
+	start.x = 600;
+	start.y = 400;
+	stop.x = 50;
+	stop.y = 400;
+
+	obstacle_cnt = 6;
+	obstacles.resize(obstacle_cnt); 
+
+	pnt.x = 300; pnt.y = 450;
 	obstacles[0].addPoint(pnt);
-	pnt.x = 200; pnt.y = 100;
+	pnt.x = 300; pnt.y = 500;
 	obstacles[0].addPoint(pnt);
-	pnt.x = 250; pnt.y = 100;
+	pnt.x = 950; pnt.y = 500;
 	obstacles[0].addPoint(pnt);
-	pnt.x = 250; pnt.y = 480;
+	pnt.x = 950; pnt.y = 450;
 	obstacles[0].addPoint(pnt);
 
-	pnt.x = 400; pnt.y = 0;
+	pnt.x = 900; pnt.y = 500;
 	obstacles[1].addPoint(pnt);
-	pnt.x = 300; pnt.y = 100;
+	pnt.x = 950; pnt.y = 500;
 	obstacles[1].addPoint(pnt);
-	pnt.x = 350; pnt.y = 250;
+	pnt.x = 950; pnt.y = 300;
 	obstacles[1].addPoint(pnt);
-	pnt.x = 450; pnt.y = 250;
+	pnt.x = 900; pnt.y = 300;
 	obstacles[1].addPoint(pnt);
-	pnt.x = 500; pnt.y = 100;
-	obstacles[1].addPoint(pnt);
+
+	pnt.x = 300; pnt.y = 350;
+	obstacles[2].addPoint(pnt);
+	pnt.x = 950; pnt.y = 350;
+	obstacles[2].addPoint(pnt);
+	pnt.x = 950; pnt.y = 300;
+	obstacles[2].addPoint(pnt);
+	pnt.x = 300; pnt.y = 300;
+	obstacles[2].addPoint(pnt);
+
+
+	pnt.x = 1100; pnt.y = 650;
+	obstacles[3].addPoint(pnt);
+	pnt.x = 1100; pnt.y = 600;
+	obstacles[3].addPoint(pnt);
+	pnt.x = 100; pnt.y = 600;
+	obstacles[3].addPoint(pnt);
+	pnt.x = 100; pnt.y = 650;
+	obstacles[3].addPoint(pnt);
+
+	pnt.x = 100; pnt.y = 650;
+	obstacles[4].addPoint(pnt);
+	pnt.x = 100; pnt.y = 150;
+	obstacles[4].addPoint(pnt);
+	pnt.x = 150; pnt.y = 150;
+	obstacles[4].addPoint(pnt);
+	pnt.x = 150; pnt.y = 650;
+	obstacles[4].addPoint(pnt);
+
+	pnt.x = 100; pnt.y = 150;
+	obstacles[5].addPoint(pnt);
+	pnt.x = 100; pnt.y = 100;
+	obstacles[5].addPoint(pnt);
+	pnt.x = 1100; pnt.y = 100;
+	obstacles[5].addPoint(pnt);
+	pnt.x = 1100; pnt.y = 150;
+	obstacles[5].addPoint(pnt);
+
+	// whichRRT = 2;
+	// start.x = 50;
+	// start.y = 50;
+	// stop.x = 1150;
+	// stop.y = 50;
+
+	// obstacle_cnt = 1;
+	// obstacles.resize(obstacle_cnt); 
+
+	// pnt.x = 550; pnt.y = 0;
+	// obstacles[0].addPoint(pnt);
+	// pnt.x = 650; pnt.y = 0;
+	// obstacles[0].addPoint(pnt);
+	// pnt.x = 650; pnt.y = 700;
+	// obstacles[0].addPoint(pnt);
+	// pnt.x = 550; pnt.y = 700;
+	// obstacles[0].addPoint(pnt);
+
+	
+	// whichRRT = 2;
+	// start.x = 100;
+	// start.y = 100;
+	// stop.x = 100;
+	// stop.y = 700;
+
+	// obstacle_cnt = 1;
+	// obstacles.resize(obstacle_cnt); 
+
+	// pnt.x = 0; pnt.y = 450;
+	// obstacles[0].addPoint(pnt);
+	// pnt.x = 1150; pnt.y = 450;
+	// obstacles[0].addPoint(pnt);
+	// pnt.x = 1150; pnt.y = 350;
+	// obstacles[0].addPoint(pnt);
+	// pnt.x = 0; pnt.y = 350;
+	// obstacles[0].addPoint(pnt);
+
 
 }
 
@@ -384,6 +466,8 @@ void RRT(Kdtree::KdTree &kdtree) {
 
 
 		if(!pathFound) checkDestinationReached(newNode, kdtree);
+
+		// #pragma omp critical
 		rewire(nearby, newNode);
 		
 		
