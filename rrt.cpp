@@ -414,12 +414,12 @@ void RRT(Kdtree::KdTree &kdtree) {
 
 			Point pnt(kdnode->point[0], kdnode->point[1]);
 
-			if (kdnode->par_cost.load()->parent != nullptr) {
-				Point parentPnt(kdnode->par_cost.load()->parent->point[0], kdnode->par_cost.load()->parent->point[1]);
+			// if (kdnode->par_cost.load()->parent != nullptr) {
+			// 	Point parentPnt(kdnode->par_cost.load()->parent->point[0], kdnode->par_cost.load()->parent->point[1]);
 
-				if(pathFound and randomCoordinate(0.0, 1.0) < 0.25) // Recalculate cost once in a while 
-					kdnode->par_cost.load()->cost = kdnode->par_cost.load()->parent->par_cost.load()->cost +  distance(parentPnt, pnt);
-			}
+			// 	if(pathFound and randomCoordinate(0.0, 1.0) < 0.25) // Recalculate cost once in a while 
+			// 		kdnode->par_cost.load()->cost = kdnode->par_cost.load()->parent->par_cost.load()->cost +  distance(parentPnt, pnt);
+			// }
 			nearestPoint = pnt; 
 			nearest_neighbor = kdnode;
 
