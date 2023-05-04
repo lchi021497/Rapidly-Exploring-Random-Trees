@@ -266,7 +266,6 @@ void draw(sf::RenderWindow& window, Kdtree::KdTree &kdtree) {
 			if (std::find(path.begin(), path.end(), ptr->index) != path.end()) {
 				printf("found cycle at node %ld along path\n", path.size());
 
-				delete goalNode;
 				goalNode = nullptr;
 				pathFound = 0;
 
@@ -361,7 +360,7 @@ void rewire(Kdtree::KdTreeNodeVec nearby, Kdtree::kdtree_node *newNode, int num_
 		if (!isEdgeObstacleFree(curPnt, parPnt)) continue;
 
 
-		while ( ((par->par_cost.load()->cost + distance(parPnt, curPnt)) - cur->par_cost.load()->cost) <= EPS) {
+		while ( ((par->par_cost.load()->cost + distance(parPnt, curPnt)) - cur->par_cost.load()->cost) < 0) {
 
 
 			Kdtree::rewire_par_cost *old = cur->par_cost;
@@ -470,7 +469,7 @@ void RRT(Kdtree::KdTree &kdtree, int num_threads) {
 
 		if(!pathFound) checkDestinationReached(newNode, kdtree);
 
-		#pragma omp critical
+		// #pragma omp critical
 		rewire(nearby, newNode, num_threads);
 		
 	}
