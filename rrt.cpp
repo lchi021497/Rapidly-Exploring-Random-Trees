@@ -258,7 +258,7 @@ void rewire(Kdtree::KdTreeNodeVec nearby, Kdtree::kdtree_node *newNode) {
 		if (!isEdgeObstacleFree(curPnt, parPnt)) continue;
 
 
-		while ( ((par->par_cost.load()->cost + distance(parPnt, curPnt)) - cur->par_cost.load()->cost) <= EPS) {
+		if ( ((par->par_cost.load()->cost + distance(parPnt, curPnt)) - cur->par_cost.load()->cost) <= EPS) {
 
 
 			Kdtree::rewire_par_cost *old = cur->par_cost;
@@ -268,9 +268,9 @@ void rewire(Kdtree::KdTreeNodeVec nearby, Kdtree::kdtree_node *newNode) {
 			newValue->parent = par; 
 			newValue->cost = par->par_cost.load()->cost + distance(parPnt, curPnt); 
 			
-			if ((cur->par_cost).compare_exchange_weak(old, newValue, std::memory_order_release, std::memory_order_relaxed)) {
+			if ((cur->par_cost).compare_exchange_strong(old, newValue, std::memory_order_release, std::memory_order_relaxed)) {
 				delete old;
-				break;
+				// break;
 			}
 			else {
 				delete newValue;
