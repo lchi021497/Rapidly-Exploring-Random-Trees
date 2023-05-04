@@ -22,7 +22,7 @@ const int RADIUS = 5 ;
 const double GOAL_SAMPLING_PROB = 0.05;
 const double INF = 1e18;
 
-const double JUMP_SIZE = (WIDTH/100.0 * HEIGHT/100.0)/1.50;
+const double JUMP_SIZE = (WIDTH/100.0 * HEIGHT/100.0)/2.0;
 const double DISK_SIZE = JUMP_SIZE ; // Ball radius around which nearby points are found 
 
 int whichRRT = 1 ; 
@@ -264,9 +264,12 @@ void draw(sf::RenderWindow& window, Kdtree::KdTree &kdtree) {
 		while(ptr->par_cost.load()->parent != nullptr) {
 
 			if (std::find(path.begin(), path.end(), ptr->index) != path.end()) {
-				printf("found cycle of length %ld", path.size());
+				printf("found cycle at node %ld along path\n", path.size());
+
+				delete goalNode;
 				goalNode = nullptr;
 				pathFound = 0;
+
 				break;
 			}
 
@@ -331,7 +334,7 @@ bool checkDestinationReached(Kdtree::kdtree_node *newNode, Kdtree::KdTree &kdtre
 		// cout << "tree: Reached!! With a distance of " << newNode->par_cost.load()->cost << " units. " << endl << endl ;
 		
 		double cost_node = newNode->par_cost.load()->cost + distance(newNodePoint, goalPoint);
-		goalNode = kdtree.insert(Kdtree::CoordPoint ({stop.x, stop.y}), -1, cost_node, newNode);
+		goalNode = kdtree.insert(Kdtree::CoordPoint ({stop.x, stop.y}), -1 - omp_get_thread_num(), cost_node, newNode);
 		cout << "tree: Reached!! With a distance of " << cost_node << " units. " << endl << endl ;
 		return true; 
 	}
@@ -340,11 +343,13 @@ bool checkDestinationReached(Kdtree::kdtree_node *newNode, Kdtree::KdTree &kdtre
 
 /*  Rewires the parents of the tree greedily starting from 
 	the new node found in this iterationsation as the parent */
-void rewire(Kdtree::KdTreeNodeVec nearby, Kdtree::kdtree_node *newNode) {
+void rewire(Kdtree::KdTreeNodeVec nearby, Kdtree::kdtree_node *newNode, int num_threads) {
 
 	for (auto kdnode: nearby) {
+		if ((kdnode->index-1) / num_threads == (newNode->index-1) / num_threads) continue; // don't rewire a different thread's new node
 
 		if (kdnode->index == newNode->index) continue;
+
 		if (kdnode->par_cost.load()->parent == nullptr) continue;
 
 		Kdtree::kdtree_node *par = newNode; 
@@ -382,7 +387,7 @@ void rewire(Kdtree::KdTreeNodeVec nearby, Kdtree::kdtree_node *newNode) {
 
 /*	Runs one iteration of RRT depending on user choice 
 	At least one new node is added on the screen each iteration. */
-void RRT(Kdtree::KdTree &kdtree) {
+void RRT(Kdtree::KdTree &kdtree, int num_threads) {
 	Point newPoint, nearestPoint, nextPoint ; bool updated = false ; int cnt = 0 ; 
 	double minCost = INF;
 
@@ -440,8 +445,6 @@ void RRT(Kdtree::KdTree &kdtree) {
 			continue ; 
 		}
 
-
-		double minCost; 
 		Kdtree::KdTreeNodeVec nearby;
 
     	kdtree.range_nearest_neighbors(Kdtree::CoordPoint({nextPoint.x, nextPoint.y}), DISK_SIZE, &nearby);
@@ -467,9 +470,8 @@ void RRT(Kdtree::KdTree &kdtree) {
 
 		if(!pathFound) checkDestinationReached(newNode, kdtree);
 
-		// #pragma omp critical
-		rewire(nearby, newNode);
-		
+		#pragma omp critical
+		rewire(nearby, newNode, num_threads);
 		
 	}
 }
@@ -525,10 +527,10 @@ int main(int argc, char* argv[]) {
 		if (argc == 2)
 			num_threads = atoi(argv[1]);
 
-		#pragma omp parallel for
+		#pragma omp parallel for num_threads(num_threads)
 		for (int i = 0; i < num_threads; i++) {
 
-			RRT(kdtree);
+			RRT(kdtree, num_threads);
 
 		}
 		iterations+=num_threads;
