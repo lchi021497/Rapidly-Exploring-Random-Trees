@@ -31,12 +31,7 @@ vector < Polygon > obstacles ;
 Point start, stop ; 
 int obstacle_cnt = 1 ;
 
-
-
-vector < Point > nodes ; 
-vector < int > parent; 
-vector < double > cost ; 
-int nodeCnt = 0, goalIndex = -1 ; 
+int nodeCnt = 0;
 Kdtree::kdtree_node* goalNode; 
 vector <sf::ConvexShape> polygons ;
 sf::CircleShape startingPoint, endingPoint ; 
@@ -74,36 +69,36 @@ void getInput() {
 	// 	}
 	// }
 
-	whichRRT = 1;
+	whichRRT = 2;
 	start.x = 100;
 	start.y = 100;
 	stop.x = 700;
 	stop.y = 500;
 
 	obstacle_cnt = 0;
-	// obstacle_cnt = 2;
-	// obstacles.resize(obstacle_cnt); 
+	obstacle_cnt = 2;
+	obstacles.resize(obstacle_cnt); 
 
-	// Point pnt;
-	// pnt.x = 200; pnt.y = 480;
-	// obstacles[0].addPoint(pnt);
-	// pnt.x = 200; pnt.y = 100;
-	// obstacles[0].addPoint(pnt);
-	// pnt.x = 250; pnt.y = 100;
-	// obstacles[0].addPoint(pnt);
-	// pnt.x = 250; pnt.y = 480;
-	// obstacles[0].addPoint(pnt);
+	Point pnt;
+	pnt.x = 200; pnt.y = 480;
+	obstacles[0].addPoint(pnt);
+	pnt.x = 200; pnt.y = 100;
+	obstacles[0].addPoint(pnt);
+	pnt.x = 250; pnt.y = 100;
+	obstacles[0].addPoint(pnt);
+	pnt.x = 250; pnt.y = 480;
+	obstacles[0].addPoint(pnt);
 
-	// pnt.x = 400; pnt.y = 0;
-	// obstacles[1].addPoint(pnt);
-	// pnt.x = 300; pnt.y = 100;
-	// obstacles[1].addPoint(pnt);
-	// pnt.x = 350; pnt.y = 250;
-	// obstacles[1].addPoint(pnt);
-	// pnt.x = 450; pnt.y = 250;
-	// obstacles[1].addPoint(pnt);
-	// pnt.x = 500; pnt.y = 100;
-	// obstacles[1].addPoint(pnt);
+	pnt.x = 400; pnt.y = 0;
+	obstacles[1].addPoint(pnt);
+	pnt.x = 300; pnt.y = 100;
+	obstacles[1].addPoint(pnt);
+	pnt.x = 350; pnt.y = 250;
+	obstacles[1].addPoint(pnt);
+	pnt.x = 450; pnt.y = 250;
+	obstacles[1].addPoint(pnt);
+	pnt.x = 500; pnt.y = 100;
+	obstacles[1].addPoint(pnt);
 
 }
 
@@ -137,7 +132,7 @@ void prepareInput() {
 void draw_tree(sf::RenderWindow& window, Kdtree::kdtree_node* root) {
 	sf::Vertex line[2]; 
 
-	if (!(root->par_cost.load()->parent == nullptr)) {
+	if (root->par_cost.load()->parent != nullptr) {
 		line[0] = sf::Vertex(sf::Vector2f(root->par_cost.load()->parent->point[0], root->par_cost.load()->parent->point[1]));
 		line[1] = sf::Vertex(sf::Vector2f(root->point[0], root->point[1]));
 #if defined(ON_MAC)
@@ -199,64 +194,6 @@ void draw(sf::RenderWindow& window, Kdtree::KdTree &kdtree) {
 	}
 }
 
-
-void draw(sf::RenderWindow& window) {
-	sf::Vertex line[2]; sf::CircleShape nodeCircle;
-
-	// Uncomment if circular nodes are to be drawn 
-	/*
-	for(auto& node: nodes) {
-		nodeCircle.setRadius(RADIUS/2.5); // nodeCircle.setRadius(min(2.0, RADIUS/2.0));
-		nodeCircle.setOrigin(RADIUS/2.5, RADIUS/2.5); 
-		nodeCircle.setFillColor(sf::Color(0, 255, 171)); nodeCircle.setPosition(node.x, node.y); 
-		window.draw(nodeCircle);
-	}
-	*/
-
-	// Draw obstacles 
-	for(auto& poly : polygons) window.draw(poly);
-
-	// Draw edges between nodes 
-	for(int i = (int)nodes.size() - 1; i; i--) {
-		Point par = nodes[parent[i]] ; 
-		line[0] = sf::Vertex(sf::Vector2f(par.x, par.y));
-		line[1] = sf::Vertex(sf::Vector2f(nodes[i].x, nodes[i].y));
-
-
-
-
-
-#if defined(ON_MAC)
-		window.draw(line, 2, sf::PrimitiveType::Lines);
-#else
-		window.draw(line, 2, sf::Lines);
-#endif
-	}
-
-	window.draw(startingPoint); window.draw(endingPoint);
-
-	// If destination is reached then path is retraced and drawn 
-	if(pathFound) {
-		int node = goalIndex; 
-		while(parent[node] != node) {
-			int par = parent[node];
-			line[0] = sf::Vertex(sf::Vector2f(nodes[par].x, nodes[par].y));
-			line[1] = sf::Vertex(sf::Vector2f(nodes[node].x, nodes[node].y));
-			line[0].color = line[1].color = sf::Color::Red; // orange color 
-#if defined(ON_MAC)
-			window.draw(line, 2, sf::PrimitiveType::Lines);
-			
-#else
-			window.draw(line, 2, sf::Lines);
-#endif
-			node = par ;
-		}
-	}
-}
-
-
-
-
 template <typename T> // Returns a random number in [low, high] 
 T randomCoordinate(T low, T high){
     random_device random_device;
@@ -281,17 +218,6 @@ Point pickRandomPoint() {
 	return Point(randomCoordinate(0, WIDTH), randomCoordinate(0, HEIGHT)); 
 }
 
-bool checkDestinationReached() {
-	sf::Vector2f position = endingPoint.getPosition(); 
-	if(checkCollision(nodes[parent[nodeCnt - 1]], nodes.back(), Point(position.x, position.y), RADIUS)) {
-		pathFound = 1 ; 
-		goalIndex = nodeCnt - 1;
-		cout << "Reached!! With a distance of " << cost.back() << " units. " << endl << endl ;
-		return true; 
-	}
-	return false;
-}
-
 bool checkDestinationReached(Kdtree::kdtree_node *newNode) {
 	sf::Vector2f position = endingPoint.getPosition(); 
 
@@ -305,7 +231,6 @@ bool checkDestinationReached(Kdtree::kdtree_node *newNode) {
 
 	if(checkCollision(parentPoint, newNodePoint, Point(position.x, position.y), RADIUS)) {
 		pathFound = 1 ; 
-		goalIndex = newNode->index;
 		goalNode = newNode;
 		cout << "tree: Reached!! With a distance of " << newNode->par_cost.load()->cost << " units. " << endl << endl ;
 		return true; 
@@ -313,58 +238,9 @@ bool checkDestinationReached(Kdtree::kdtree_node *newNode) {
 	return false;
 }
 
-
-/* Inserts nodes on the path from rootIndex till Point q such 
-   that successive nodes on the path are not more than 
-   JUMP_SIZE distance away */
-void insertNodesInPath(int rootIndex, Point& q) {
-	Point p = nodes[rootIndex] ; 
-	if(!isEdgeObstacleFree(p, q)) return ;
-	while(!(p == q)) {
-		Point nxt = p.steer(q, JUMP_SIZE); 
-		nodes.push_back(nxt); 
-		parent.push_back(rootIndex);
-		cost.push_back(cost[rootIndex] + distance(p, nxt));
-		rootIndex = nodeCnt++ ; 
-		p = nxt ; 
-	}
-}
-
-/*  Rewires the parents of the tree greedily starting from 
-	the new node found in this iterationsation as the parent */
-void rewire(std::vector<int> nearby, int lastInserted) {
-	// int lastInserted = nodeCnt - 1 ; 
-
-	// printf("old rewire %ld\n", nearby.size());
-	for(auto nodeIndex: nearby) {
-
-		if (nodeIndex == lastInserted) continue;
-		if (!isEdgeObstacleFree(nodes[nodeIndex], nodes[lastInserted])) continue;
-
-
-		int par = lastInserted, cur = nodeIndex;
-
-		// Rewire parents as much as possible (greedily)
-		// printf("%f\n", ((cost[par] + distance(nodes[par], nodes[cur])) - cost[cur]));
-
-		while( ((cost[par] + distance(nodes[par], nodes[cur])) - cost[cur]) <= EPS) { 
-
-			int oldParent = parent[cur] ;
-			parent[cur] = par; cost[cur] = cost[par] + distance(nodes[par], nodes[cur]);
-
-			// printf("old: rewire node %d's parent from %d to %d\n", nodeIndex, oldParent, par);
-
-			par = cur, cur = oldParent; 
-
-		}
-	}
-}
-
 /*  Rewires the parents of the tree greedily starting from 
 	the new node found in this iterationsation as the parent */
 void rewire(Kdtree::KdTreeNodeVec nearby, Kdtree::kdtree_node *newNode) {
-
-	// printf("new rewire %ld\n", nearby.size());
 
 	for (auto kdnode: nearby) {
 		if (kdnode->par_cost.load()->parent == nullptr) continue;
@@ -378,7 +254,6 @@ void rewire(Kdtree::KdTreeNodeVec nearby, Kdtree::kdtree_node *newNode) {
 
 		if (!isEdgeObstacleFree(curPnt, parPnt)) continue;
 
-		// printf("%f\n",  ((par->par_cost.load()->cost + distance(parPnt, curPnt)) - cur->par_cost.load()->cost));
 
 		while( ((par->par_cost.load()->cost + distance(parPnt, curPnt)) - cur->par_cost.load()->cost) <= EPS) {
 
@@ -391,8 +266,6 @@ void rewire(Kdtree::KdTreeNodeVec nearby, Kdtree::kdtree_node *newNode) {
 			newValue->cost = par->par_cost.load()->cost + distance(parPnt, curPnt); 
 			
 			if ((cur->par_cost).compare_exchange_weak(old, newValue, std::memory_order_release, std::memory_order_relaxed)) {
-
-				// printf("new: rewire node %d's parent from %d to %d\n", kdnode->index, old->parent->index, par->index);
 
 				par = cur; 
 				cur = old->parent;
@@ -416,10 +289,6 @@ void RRT(Kdtree::KdTree &kdtree) {
 	Point newPoint, nearestPoint, nextPoint ; bool updated = false ; int cnt = 0 ; 
 	double minCost = INF;
 
-	vector < int > nearby2 ; 
-	int localNodeCnt = nodeCnt;
-
-	vector <double > jumps(localNodeCnt);
 	std::chrono::steady_clock::time_point begin;
 	std::chrono::steady_clock::time_point end; 
 	
@@ -435,23 +304,6 @@ void RRT(Kdtree::KdTree &kdtree) {
 		// be added in graph in the (nearestPoint, newPoint) while being obstacle free
 
 		nearestPoint = Point(kdtree.root->point[0], kdtree.root->point[1]);
-
-		// Point nearestPoint2 = *nodes.begin(); 
-		// int nearestIndex2 = 0;
-		// vector <double > jumps2(localNodeCnt);
-
-		// for(int i = 0; i < localNodeCnt; i++) {
-		// 	// if(pathFound and randomCoordinate(0.0, 1.0) < 0.25) // Recalculate cost once in a while 
-		// 	// 	cost[i] = cost[parent[i]] + distance(nodes[parent[i]], nodes[i]);  
-
-		// 	// Make smaller jumps sometimes to facilitate passing through narrow passages 
-		// 	jumps2[i] = randomCoordinate(0.3, 1.0) * JUMP_SIZE ; 
-		// 	auto pnt = nodes[i] ; 
-
-
-		// 	if((pnt.distance(newPoint) - nearestPoint2.distance(newPoint)) <= EPS and isEdgeObstacleFree(pnt, pnt.steer(newPoint, jumps2[i])))
-		// 		nearestPoint2 = pnt, nearestIndex2 = i ; 
-		// }
 
 		int num_neighbors = 1;
 
@@ -477,29 +329,15 @@ void RRT(Kdtree::KdTree &kdtree) {
 
 		}
 		
-		
-		// double golden_dist = (nearestPoint2.x - newPoint.x) * (nearestPoint2.x - newPoint.x) + (nearestPoint2.y - newPoint.y) * (nearestPoint2.y - newPoint.y);
-		// double tree_dist = (nearestPoint.x - newPoint.x) * (nearestPoint.x - newPoint.x) + (nearestPoint.y - newPoint.y) * (nearestPoint.y - newPoint.y);
-		// if (abs(golden_dist - tree_dist) > 0.0001) {
-		// 	printf("q: %f %f\n", newPoint.x, newPoint.y);
-		// 	printf("golden: %f %f %f \n", nearestPoint2.x, nearestPoint2.y, golden_dist);
-		// 	printf("%d, tree: %f %f %f \n", num_neighbors, nearestPoint.x, nearestPoint.y, tree_dist);
-		// }
-
 		nextPoint = stepNear(nearestPoint, newPoint, randomCoordinate(0.3, 1.0) * JUMP_SIZE);
 
 		if(!isEdgeObstacleFree(nearestPoint, nextPoint)) continue ; 
-
 
 		if( (whichRRT == 1) or (!pathFound and whichRRT == 3)) {
 			// This is where we don't do any RRT* optimization part 
 			updated = true ;
 			double cost_node = nearest_neighbor->par_cost.load()->cost + distance(nearestPoint, nextPoint);
 			Kdtree::kdtree_node *newNode = kdtree.insert(Kdtree::CoordPoint ({nextPoint.x, nextPoint.y}), index, cost_node, nearest_neighbor);
-
-			// nodes[index] = nextPoint;
-			// parent[index] = nearest_neighbor->index;
-			// cost[index] = cost_node;
 
 			if(!pathFound) checkDestinationReached(newNode);
 
@@ -514,16 +352,7 @@ void RRT(Kdtree::KdTree &kdtree) {
 		minCost = nearest_neighbor->par_cost.load()->cost + distance(nearestPoint, nextPoint);
 		Kdtree::kdtree_node* optim_parent = nearest_neighbor; 
 
-		// for(int i = 0; i < nodeCnt; i++)
-		// 	if((nodes[i].distance(nextPoint) - DISK_SIZE) <= EPS and isEdgeObstacleFree(nodes[i], nextPoint))
-		// 		nearby2.push_back(i);
-
-		// if (nearby.size() != nearby2.size()) {
-		// 	printf("error");
-		// }
-
 		for (auto kdnode:nearby) {
-			nearby2.push_back(kdnode->index);
 
 			if (kdnode->index == nearest_neighbor->index) continue;
 			Point nodePnt(kdnode->point[0], kdnode->point[1]);
@@ -538,15 +367,10 @@ void RRT(Kdtree::KdTree &kdtree) {
 	
 		Kdtree::kdtree_node *newNode = kdtree.insert(Kdtree::CoordPoint ({nextPoint.x, nextPoint.y}), index, minCost, optim_parent);
 
-		// nodes[index] = nextPoint;
-		// parent[index] = optim_parent->index;
-		// cost[index] = minCost;
-
 		updated = true ; 
 
 		if(!pathFound) checkDestinationReached(newNode);
 
-		// rewire(nearby2, index);
 		rewire(nearby, newNode);
 	}
 }
@@ -567,7 +391,7 @@ int main(int argc, char* argv[]) {
 	stop.x = 500;
 	stop.y = 500;
 	obstacle_cnt = 0; 
-	// getInput(); 
+	getInput(); 
 	prepareInput();
 #if defined(ON_MAC)
 	sf::Vector2u dimensions(WIDTH, HEIGHT);
@@ -576,8 +400,7 @@ int main(int argc, char* argv[]) {
     sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "Basic Anytime RRT");
 #endif
 
-	nodeCnt = 1; nodes.push_back(start); int iterations = 0 ; 
-	parent.push_back(0); cost.push_back(0);
+	nodeCnt = 1; int iterations = 0 ; 
 
 	kdtree.insert(Kdtree::CoordPoint ({start.x, start.y}), 0, 0, nullptr);
     sf::Time delayTime = sf::milliseconds(5);
@@ -601,24 +424,10 @@ int main(int argc, char* argv[]) {
 		if (argc == 2)
 			num_threads = atoi(argv[1]);
 
-		// nodes.resize(nodes.size() + num_threads);
-		// parent.resize(nodes.size() + num_threads);
-		// cost.resize(nodes.size() + num_threads);
-
-
 		#pragma omp parallel for
 		for (int i = 0; i < num_threads; i++) {
-			// int tid = omp_get_thread_num();
-			// if (tid==0)
-				// begin = std::chrono::steady_clock::now();
-	
+
 			RRT(kdtree);
-
-			// if (tid == 0)
-				// end = std::chrono::steady_clock::now();
-
-			// if (tid == 0)
-			// 	std::cout << "total RRT = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
 
 		}
 		iterations+=num_threads;
@@ -627,14 +436,12 @@ int main(int argc, char* argv[]) {
 		if(iterations % 500 == 0) {
 			cout << "Iterations: " << iterations << endl ; 
 			if(!pathFound) cout << "Not reached yet :( " << endl ;
-			// else cout << "Shortest distance till now: " << cost[goalIndex] << " units." << endl ;
 			else cout << "Shortest distance till now: " << goalNode->par_cost.load()->cost << " units." << endl ;
 			cout << endl ;
 		}
 
 		sf::sleep(delayTime);
 		window.clear();
-		// draw(window); 
 		draw(window, kdtree); 
         window.display();
     }
