@@ -258,7 +258,7 @@ void rewire(Kdtree::KdTreeNodeVec nearby, Kdtree::kdtree_node *newNode) {
 		if (!isEdgeObstacleFree(curPnt, parPnt)) continue;
 
 
-		while( ((par->par_cost.load()->cost + distance(parPnt, curPnt)) - cur->par_cost.load()->cost) <= EPS) {
+		if ( ((par->par_cost.load()->cost + distance(parPnt, curPnt)) - cur->par_cost.load()->cost) <= EPS) {
 
 
 			Kdtree::rewire_par_cost *old = cur->par_cost;
@@ -268,17 +268,12 @@ void rewire(Kdtree::KdTreeNodeVec nearby, Kdtree::kdtree_node *newNode) {
 			newValue->parent = par; 
 			newValue->cost = par->par_cost.load()->cost + distance(parPnt, curPnt); 
 			
-			if ((cur->par_cost).compare_exchange_weak(old, newValue, std::memory_order_release, std::memory_order_relaxed)) {
-
-				par = cur; 
-				cur = old->parent;
-				parPnt = Point(par->point[0], par->point[1]);
-				curPnt = Point(cur->point[0], cur->point[1]);
+			if ((cur->par_cost).compare_exchange_strong(old, newValue, std::memory_order_release, std::memory_order_relaxed)) {
 				delete old;
-
-				if (cur == nullptr) break;
 			}
-
+			else {
+				delete newValue;
+			}
 
 		}
 
@@ -297,7 +292,6 @@ void RRT(Kdtree::KdTree &kdtree) {
 	
 	while(!updated) {
 
-		
 		newPoint = pickRandomPoint(); 
    		Kdtree::CoordPoint queryPoint({newPoint.x, newPoint.y});
 
@@ -369,9 +363,11 @@ void RRT(Kdtree::KdTree &kdtree) {
 
 		updated = true ; 
 
-		if(!pathFound) checkDestinationReached(newNode, kdtree);
 
+		if(!pathFound) checkDestinationReached(newNode, kdtree);
 		rewire(nearby, newNode);
+		
+		
 	}
 }
 
@@ -385,12 +381,12 @@ int main(int argc, char* argv[]) {
 	std::chrono::steady_clock::time_point begin;
 	std::chrono::steady_clock::time_point end; 
 
-	whichRRT = 3; 
-	start.x = 0;
-	start.y = 0;
-	stop.x = 500;
-	stop.y = 500;
-	obstacle_cnt = 0; 
+	// whichRRT = 2; 
+	// start.x = 0;
+	// start.y = 0;
+	// stop.x = 500;
+	// stop.y = 500;
+	// obstacle_cnt = 0; 
 	getInput(); 
 	prepareInput();
 #if defined(ON_MAC)
@@ -409,6 +405,8 @@ int main(int argc, char* argv[]) {
 
     while (window.isOpen())
     {
+
+	// while(true) {
 
         sf::Event event;
         while (window.pollEvent(event))
