@@ -37,7 +37,7 @@ vector < Point > nodes ;
 vector < int > parent; 
 vector < double > cost ; 
 int nodeCnt = 0, goalIndex = -1 ; 
-
+Kdtree::kdtree_node* goalNode; 
 vector <sf::ConvexShape> polygons ;
 sf::CircleShape startingPoint, endingPoint ; 
 bool pathFound = 0 ;
@@ -134,6 +134,72 @@ void prepareInput() {
 	}
 }
 
+void draw_tree(sf::RenderWindow& window, Kdtree::kdtree_node* root) {
+	sf::Vertex line[2]; 
+
+	if (!(root->par_cost.load()->parent == nullptr)) {
+		line[0] = sf::Vertex(sf::Vector2f(root->par_cost.load()->parent->point[0], root->par_cost.load()->parent->point[1]));
+		line[1] = sf::Vertex(sf::Vector2f(root->point[0], root->point[1]));
+#if defined(ON_MAC)
+		window.draw(line, 2, sf::PrimitiveType::Lines);
+#else
+		window.draw(line, 2, sf::Lines);
+#endif
+
+	}
+	if(root->loson) {
+		draw_tree(window, root->loson);
+	}
+	if(root->hison) {
+		draw_tree(window, root->hison);
+	}
+
+}
+
+void draw(sf::RenderWindow& window, Kdtree::KdTree &kdtree) {
+	sf::Vertex line[2]; sf::CircleShape nodeCircle;
+
+	// Uncomment if circular nodes are to be drawn 
+	/*
+	for(auto& node: nodes) {
+		nodeCircle.setRadius(RADIUS/2.5); // nodeCircle.setRadius(min(2.0, RADIUS/2.0));
+		nodeCircle.setOrigin(RADIUS/2.5, RADIUS/2.5); 
+		nodeCircle.setFillColor(sf::Color(0, 255, 171)); nodeCircle.setPosition(node.x, node.y); 
+		window.draw(nodeCircle);
+	}
+	*/
+
+	// Draw obstacles 
+	for(auto& poly : polygons) window.draw(poly);
+
+	draw_tree(window, kdtree.root);
+
+	window.draw(startingPoint); window.draw(endingPoint);
+
+	// If destination is reached then path is retraced and drawn 
+	if(pathFound) {
+
+		Kdtree::kdtree_node *ptr = goalNode;
+
+		while(ptr->par_cost.load()->parent != nullptr) {
+
+			line[0] = sf::Vertex(sf::Vector2f(ptr->par_cost.load()->parent->point[0], ptr->par_cost.load()->parent->point[1]));
+			line[1] = sf::Vertex(sf::Vector2f(ptr->point[0], ptr->point[1]));
+			line[0].color = line[1].color = sf::Color::Red; // orange color 
+
+			ptr = ptr->par_cost.load()->parent;
+#if defined(ON_MAC)
+			window.draw(line, 2, sf::PrimitiveType::Lines);
+			
+#else
+			window.draw(line, 2, sf::Lines);
+#endif
+		}
+
+	}
+}
+
+
 void draw(sf::RenderWindow& window) {
 	sf::Vertex line[2]; sf::CircleShape nodeCircle;
 
@@ -188,6 +254,9 @@ void draw(sf::RenderWindow& window) {
 	}
 }
 
+
+
+
 template <typename T> // Returns a random number in [low, high] 
 T randomCoordinate(T low, T high){
     random_device random_device;
@@ -237,6 +306,7 @@ bool checkDestinationReached(Kdtree::kdtree_node *newNode) {
 	if(checkCollision(parentPoint, newNodePoint, Point(position.x, position.y), RADIUS)) {
 		pathFound = 1 ; 
 		goalIndex = newNode->index;
+		goalNode = newNode;
 		cout << "tree: Reached!! With a distance of " << newNode->par_cost.load()->cost << " units. " << endl << endl ;
 		return true; 
 	}
@@ -366,6 +436,23 @@ void RRT(Kdtree::KdTree &kdtree) {
 
 		nearestPoint = Point(kdtree.root->point[0], kdtree.root->point[1]);
 
+		// Point nearestPoint2 = *nodes.begin(); 
+		// int nearestIndex2 = 0;
+		// vector <double > jumps2(localNodeCnt);
+
+		// for(int i = 0; i < localNodeCnt; i++) {
+		// 	// if(pathFound and randomCoordinate(0.0, 1.0) < 0.25) // Recalculate cost once in a while 
+		// 	// 	cost[i] = cost[parent[i]] + distance(nodes[parent[i]], nodes[i]);  
+
+		// 	// Make smaller jumps sometimes to facilitate passing through narrow passages 
+		// 	jumps2[i] = randomCoordinate(0.3, 1.0) * JUMP_SIZE ; 
+		// 	auto pnt = nodes[i] ; 
+
+
+		// 	if((pnt.distance(newPoint) - nearestPoint2.distance(newPoint)) <= EPS and isEdgeObstacleFree(pnt, pnt.steer(newPoint, jumps2[i])))
+		// 		nearestPoint2 = pnt, nearestIndex2 = i ; 
+		// }
+
 		int num_neighbors = 1;
 
 		begin = std::chrono::steady_clock::now();
@@ -390,6 +477,15 @@ void RRT(Kdtree::KdTree &kdtree) {
 
 		}
 		
+		
+		// double golden_dist = (nearestPoint2.x - newPoint.x) * (nearestPoint2.x - newPoint.x) + (nearestPoint2.y - newPoint.y) * (nearestPoint2.y - newPoint.y);
+		// double tree_dist = (nearestPoint.x - newPoint.x) * (nearestPoint.x - newPoint.x) + (nearestPoint.y - newPoint.y) * (nearestPoint.y - newPoint.y);
+		// if (abs(golden_dist - tree_dist) > 0.0001) {
+		// 	printf("q: %f %f\n", newPoint.x, newPoint.y);
+		// 	printf("golden: %f %f %f \n", nearestPoint2.x, nearestPoint2.y, golden_dist);
+		// 	printf("%d, tree: %f %f %f \n", num_neighbors, nearestPoint.x, nearestPoint.y, tree_dist);
+		// }
+
 		nextPoint = stepNear(nearestPoint, newPoint, randomCoordinate(0.3, 1.0) * JUMP_SIZE);
 
 		if(!isEdgeObstacleFree(nearestPoint, nextPoint)) continue ; 
@@ -401,9 +497,9 @@ void RRT(Kdtree::KdTree &kdtree) {
 			double cost_node = nearest_neighbor->par_cost.load()->cost + distance(nearestPoint, nextPoint);
 			Kdtree::kdtree_node *newNode = kdtree.insert(Kdtree::CoordPoint ({nextPoint.x, nextPoint.y}), index, cost_node, nearest_neighbor);
 
-			nodes[index] = nextPoint;
-			parent[index] = nearest_neighbor->index;
-			cost[index] = cost_node;
+			// nodes[index] = nextPoint;
+			// parent[index] = nearest_neighbor->index;
+			// cost[index] = cost_node;
 
 			if(!pathFound) checkDestinationReached(newNode);
 
@@ -417,6 +513,14 @@ void RRT(Kdtree::KdTree &kdtree) {
     	kdtree.range_nearest_neighbors(Kdtree::CoordPoint({nextPoint.x, nextPoint.y}), DISK_SIZE, &nearby);
 		minCost = nearest_neighbor->par_cost.load()->cost + distance(nearestPoint, nextPoint);
 		Kdtree::kdtree_node* optim_parent = nearest_neighbor; 
+
+		// for(int i = 0; i < nodeCnt; i++)
+		// 	if((nodes[i].distance(nextPoint) - DISK_SIZE) <= EPS and isEdgeObstacleFree(nodes[i], nextPoint))
+		// 		nearby2.push_back(i);
+
+		// if (nearby.size() != nearby2.size()) {
+		// 	printf("error");
+		// }
 
 		for (auto kdnode:nearby) {
 			nearby2.push_back(kdnode->index);
@@ -434,15 +538,15 @@ void RRT(Kdtree::KdTree &kdtree) {
 	
 		Kdtree::kdtree_node *newNode = kdtree.insert(Kdtree::CoordPoint ({nextPoint.x, nextPoint.y}), index, minCost, optim_parent);
 
-		nodes[index] = nextPoint;
-		parent[index] = optim_parent->index;
-		cost[index] = minCost;
+		// nodes[index] = nextPoint;
+		// parent[index] = optim_parent->index;
+		// cost[index] = minCost;
 
 		updated = true ; 
 
 		if(!pathFound) checkDestinationReached(newNode);
 
-		rewire(nearby2, index);
+		// rewire(nearby2, index);
 		rewire(nearby, newNode);
 	}
 }
@@ -497,9 +601,9 @@ int main(int argc, char* argv[]) {
 		if (argc == 2)
 			num_threads = atoi(argv[1]);
 
-		nodes.resize(nodes.size() + num_threads);
-		parent.resize(nodes.size() + num_threads);
-		cost.resize(nodes.size() + num_threads);
+		// nodes.resize(nodes.size() + num_threads);
+		// parent.resize(nodes.size() + num_threads);
+		// cost.resize(nodes.size() + num_threads);
 
 
 		#pragma omp parallel for
@@ -523,13 +627,15 @@ int main(int argc, char* argv[]) {
 		if(iterations % 500 == 0) {
 			cout << "Iterations: " << iterations << endl ; 
 			if(!pathFound) cout << "Not reached yet :( " << endl ;
-			else cout << "Shortest distance till now: " << cost[goalIndex] << " units." << endl ;
+			// else cout << "Shortest distance till now: " << cost[goalIndex] << " units." << endl ;
+			else cout << "Shortest distance till now: " << goalNode->par_cost.load()->cost << " units." << endl ;
 			cout << endl ;
 		}
 
 		sf::sleep(delayTime);
 		window.clear();
-		draw(window); 
+		// draw(window); 
+		draw(window, kdtree); 
         window.display();
     }
 }
